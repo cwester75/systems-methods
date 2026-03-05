@@ -40,6 +40,8 @@ from kaufman_indicators.market_quality.entropy import price_entropy
 from kaufman_indicators.market_quality.volume_roc import volume_roc
 from kaufman_indicators.market_quality.volume_zscore import volume_zscore
 
+from kaufman_indicators.registry import INDICATORS, get as get_indicator
+
 __all__ = [
     # trend
     "efficiency_ratio",
@@ -69,4 +71,7 @@ __all__ = [
     "price_entropy",
     "volume_roc",
     "volume_zscore",
+    # registry
+    "INDICATORS",
+    "get_indicator",
 ]
