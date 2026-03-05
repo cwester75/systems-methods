@@ -89,6 +89,14 @@ class TestLinReg:
             expected = result.slope[i] * (period - 1) + result.intercept[i]
             np.testing.assert_allclose(result.value[i], expected, atol=1e-10)
 
+    def test_noisy_series_low_r_squared(self):
+        # Pure noise → R² should be low
+        rng = np.random.default_rng(42)
+        prices = 100.0 + rng.standard_normal(200) * 10  # no trend, just noise
+        result = linreg(prices, period=14)
+        valid = result.r_squared[~np.isnan(result.r_squared)]
+        assert np.mean(valid) < 0.5
+
     def test_too_short_input(self):
         prices = np.array([1.0, 2.0, 3.0])
         result = linreg(prices, period=14)

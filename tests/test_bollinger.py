@@ -103,6 +103,23 @@ class TestBollingerBandWidth:
         assert bw_volatile > bw_steady
 
 
+    def test_flat_series_bands_collapse(self):
+        # Constant prices → upper == lower == middle
+        prices = np.full(30, 100.0)
+        result = bollinger_bands(prices, period=10)
+        for i in range(9, 30):
+            np.testing.assert_allclose(result.upper[i], 100.0, atol=1e-10)
+            np.testing.assert_allclose(result.lower[i], 100.0, atol=1e-10)
+            np.testing.assert_allclose(result.middle[i], 100.0, atol=1e-10)
+
+    def test_uptrend_positive_bandwidth(self):
+        # Linear ramp → non-zero std → positive bandwidth throughout
+        prices = np.linspace(100, 200, 60)
+        result = bollinger_bands(prices, period=20)
+        bw = result.bandwidth[~np.isnan(result.bandwidth)]
+        assert np.all(bw > 0)
+
+
 class TestPercentB:
     def test_percent_b_at_upper_band(self):
         # If close == upper band, %B = 1.0

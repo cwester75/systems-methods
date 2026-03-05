@@ -80,6 +80,28 @@ class TestDonchianChannels:
         np.testing.assert_allclose(valid_lower, 90.0, atol=1e-10)
         np.testing.assert_allclose(valid_mid, 100.0, atol=1e-10)
 
+    def test_monotonic_uptrend_widening_channel(self):
+        # In an uptrend, upper tracks the latest high, lower lags → channel widens
+        n = 40
+        high = np.linspace(105, 205, n)
+        low = np.linspace(95, 195, n)
+        period = 10
+        result = donchian_channels(high, low, period=period)
+        # Channel width should be constant for a linear series
+        for i in range(period - 1, n):
+            width = result.upper[i] - result.lower[i]
+            expected_width = high[i] - low[i - period + 1]
+            np.testing.assert_allclose(width, expected_width, atol=1e-10)
+
+    def test_flat_series_zero_width(self):
+        # Flat H and L → upper == lower → width = 0
+        n = 30
+        high = np.full(n, 100.0)
+        low = np.full(n, 100.0)
+        result = donchian_channels(high, low, period=10)
+        valid_width = result.upper[9:] - result.lower[9:]
+        np.testing.assert_allclose(valid_width, 0.0, atol=1e-10)
+
     def test_mismatched_lengths_raises(self):
         with pytest.raises(ValueError):
             donchian_channels(np.array([1.0, 2.0]), np.array([1.0]))

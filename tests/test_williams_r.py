@@ -82,6 +82,26 @@ class TestWilliamsR:
                 continue
             np.testing.assert_allclose(wr[i], stoch.k[i] - 100.0, atol=1e-10)
 
+    def test_monotonic_uptrend_near_zero(self):
+        # In an uptrend, close near highest high → %R near 0
+        n = 40
+        close = np.linspace(100, 200, n)
+        high = close + 2.0
+        low = close - 2.0
+        result = williams_r(high, low, close, period=14)
+        valid = result[~np.isnan(result)]
+        assert np.mean(valid[-10:]) > -30  # near 0, not -100
+
+    def test_monotonic_downtrend_near_minus_100(self):
+        # In a downtrend, close near lowest low → %R near -100
+        n = 40
+        close = np.linspace(200, 100, n)
+        high = close + 2.0
+        low = close - 2.0
+        result = williams_r(high, low, close, period=14)
+        valid = result[~np.isnan(result)]
+        assert np.mean(valid[-10:]) < -70  # near -100
+
     def test_mismatched_lengths_raises(self):
         with pytest.raises(ValueError):
             williams_r(np.array([1.0, 2.0]), np.array([1.0]), np.array([1.0, 2.0]))

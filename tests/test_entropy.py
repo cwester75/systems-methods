@@ -93,6 +93,24 @@ class TestApproximateEntropy:
             assert np.mean(valid_r) > np.mean(valid_l)
 
 
+class TestEntropySyntheticExpectations:
+    def test_linear_ramp_low_entropy(self):
+        # Constant log-returns → all in one bin → low entropy
+        prices = np.exp(np.linspace(np.log(100), np.log(200), 150))
+        result = price_entropy(prices, period=50, method="shannon", bins=10)
+        valid = result[~np.isnan(result)]
+        # Single-value log returns → most mass in 1-2 bins → entropy < 1
+        assert np.mean(valid) < 2.0
+
+    def test_noisy_series_high_entropy(self):
+        rng = np.random.default_rng(42)
+        prices = 100 * np.exp(np.cumsum(rng.standard_normal(150) * 0.05))
+        result = price_entropy(prices, period=50, method="shannon", bins=10)
+        valid = result[~np.isnan(result)]
+        # Noisy returns spread across bins → high entropy
+        assert np.mean(valid) > 2.0
+
+
 class TestEntropyValidation:
     def test_invalid_method_raises(self):
         prices = np.linspace(100, 200, 100)

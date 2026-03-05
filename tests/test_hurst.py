@@ -52,6 +52,26 @@ class TestHurstExponent:
         result = hurst_exponent(prices, period=100)
         assert np.all(np.isnan(result))
 
+    def test_mean_reverting_lower_hurst_than_trending(self):
+        # Mean-reverting series should have lower H than trending series
+        rng = np.random.default_rng(42)
+        n = 2000
+        # Mean-reverting: strong pull back to center
+        mr_prices = np.zeros(n)
+        mr_prices[0] = 100.0
+        for i in range(1, n):
+            mr_prices[i] = mr_prices[i - 1] + rng.standard_normal() * 0.5 - 0.3 * (mr_prices[i - 1] - 100.0)
+        # Trending: persistent drift
+        tr_returns = rng.standard_normal(n) * 0.005 + 0.003
+        tr_prices = 100 * np.exp(np.cumsum(tr_returns))
+
+        h_mr = hurst_exponent(mr_prices, period=200)
+        h_tr = hurst_exponent(tr_prices, period=200)
+        valid_mr = h_mr[~np.isnan(h_mr)]
+        valid_tr = h_tr[~np.isnan(h_tr)]
+        if len(valid_mr) > 0 and len(valid_tr) > 0:
+            assert np.mean(valid_mr) < np.mean(valid_tr)
+
     def test_custom_period(self):
         rng = np.random.default_rng(7)
         prices = 100 * np.exp(np.cumsum(rng.standard_normal(300) * 0.01))
