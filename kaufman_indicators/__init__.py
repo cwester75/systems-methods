@@ -8,7 +8,7 @@ trend           : Efficiency Ratio, KAMA, Linear Regression, Moving Averages
 momentum        : Rate of Change, RSI, MACD, Stochastic, Momentum
 volatility      : True Range, ATR, Realized Volatility, Parkinson, Garman-Klass
 range           : Bollinger Bands, Donchian Channels, Williams %R, Price Z-Score
-market_quality  : Fractal Dimension Index, Hurst Exponent, Entropy
+market_quality  : Fractal Dimension Index, Hurst Exponent, Entropy, Volume ROC, Volume Z-Score
 utils           : Rolling helpers, Math helpers
 """
 
@@ -37,6 +37,8 @@ from kaufman_indicators.range.zscore import price_zscore
 from kaufman_indicators.market_quality.fdi import fdi
 from kaufman_indicators.market_quality.hurst import hurst_exponent
 from kaufman_indicators.market_quality.entropy import price_entropy
+from kaufman_indicators.market_quality.volume_roc import volume_roc
+from kaufman_indicators.market_quality.volume_zscore import volume_zscore
 
 __all__ = [
     # trend
@@ -65,4 +67,6 @@ __all__ = [
     "fdi",
     "hurst_exponent",
     "price_entropy",
+    "volume_roc",
+    "volume_zscore",
 ]
