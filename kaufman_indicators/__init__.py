@@ -14,7 +14,7 @@ utils           : Rolling helpers, Math helpers
 
 from kaufman_indicators.trend.efficiency_ratio import efficiency_ratio
 from kaufman_indicators.trend.kama import kama
-from kaufman_indicators.trend.linreg import linreg
+from kaufman_indicators.trend.linreg import linreg, linreg_forecast
 from kaufman_indicators.trend.moving_averages import sma, ema, wma, dema, tema
 
 from kaufman_indicators.momentum.roc import roc
@@ -38,7 +38,7 @@ __all__ = [
     # trend
     "efficiency_ratio",
     "kama",
-    "linreg",
+    "linreg", "linreg_forecast",
     "sma", "ema", "wma", "dema", "tema",
     # momentum
     "roc",
