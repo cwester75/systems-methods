@@ -7,7 +7,7 @@ Subpackages
 trend           : Efficiency Ratio, KAMA, Linear Regression, Moving Averages
 momentum        : Rate of Change, RSI, MACD, Stochastic, Momentum
 volatility      : True Range, ATR, Realized Volatility, Parkinson, Garman-Klass
-range           : Bollinger Bands, Donchian Channels, Williams %R
+range           : Bollinger Bands, Donchian Channels, Williams %R, Price Z-Score
 market_quality  : Fractal Dimension Index, Hurst Exponent, Entropy
 utils           : Rolling helpers, Math helpers
 """
@@ -32,6 +32,7 @@ from kaufman_indicators.volatility.garman_klass import garman_klass_vol
 from kaufman_indicators.range.bollinger import bollinger_bands
 from kaufman_indicators.range.donchian import donchian_channels
 from kaufman_indicators.range.williams_r import williams_r
+from kaufman_indicators.range.zscore import price_zscore
 
 from kaufman_indicators.market_quality.fdi import fdi
 from kaufman_indicators.market_quality.hurst import hurst_exponent
@@ -59,6 +60,7 @@ __all__ = [
     "bollinger_bands",
     "donchian_channels",
     "williams_r",
+    "price_zscore",
     # market_quality
     "fdi",
     "hurst_exponent",
