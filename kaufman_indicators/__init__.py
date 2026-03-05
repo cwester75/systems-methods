@@ -5,7 +5,7 @@ Perry Kaufman's "Trading Systems and Methods".
 Subpackages
 -----------
 trend           : Efficiency Ratio, KAMA, Linear Regression, Moving Averages
-momentum        : Rate of Change, RSI, MACD, Stochastic
+momentum        : Rate of Change, RSI, MACD, Stochastic, Momentum
 volatility      : True Range, ATR, Realized Volatility
 range           : Bollinger Bands, Donchian Channels, Williams %R
 market_quality  : Fractal Dimension Index, Hurst Exponent, Entropy
@@ -21,6 +21,7 @@ from kaufman_indicators.momentum.roc import roc
 from kaufman_indicators.momentum.rsi import rsi
 from kaufman_indicators.momentum.macd import macd
 from kaufman_indicators.momentum.stochastic import stochastic
+from kaufman_indicators.momentum.momentum import momentum
 
 from kaufman_indicators.volatility.true_range import true_range
 from kaufman_indicators.volatility.atr import atr
@@ -45,6 +46,7 @@ __all__ = [
     "rsi",
     "macd",
     "stochastic",
+    "momentum",
     # volatility
     "true_range",
     "atr",
