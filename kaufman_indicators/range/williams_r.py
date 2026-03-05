@@ -15,9 +15,11 @@ Commodities.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 from kaufman_indicators.utils.rolling import rolling_max, rolling_min
 
 
+@pandas_aware
 def williams_r(
     high: np.ndarray,
     low: np.ndarray,

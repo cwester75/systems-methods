@@ -14,8 +14,10 @@ Wilder, J. W. (1978). *New Concepts in Technical Trading Systems*.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 
 
+@pandas_aware
 def true_range(
     high: np.ndarray,
     low: np.ndarray,

@@ -16,6 +16,7 @@ import numpy as np
 from typing import NamedTuple
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 from kaufman_indicators.utils.rolling import rolling_mean, rolling_std
 
 
@@ -34,6 +35,7 @@ class BollingerResult(NamedTuple):
     """(close − lower) / (upper − lower) – position within the bands."""
 
 
+@pandas_aware
 def bollinger_bands(
     prices: np.ndarray,
     period: int = 20,

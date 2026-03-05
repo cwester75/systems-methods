@@ -16,9 +16,11 @@ Kaufman, P. J. (2013). *Trading Systems and Methods* (5th ed.), Chapter 17.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 from kaufman_indicators.utils.rolling import rolling_sum
 
 
+@pandas_aware
 def efficiency_ratio(prices: np.ndarray, period: int = 10) -> np.ndarray:
     """Calculate the Efficiency Ratio over *period* bars.
 

@@ -41,6 +41,17 @@ from kaufman_indicators.market_quality.volume_roc import volume_roc
 from kaufman_indicators.market_quality.volume_zscore import volume_zscore
 
 from kaufman_indicators.registry import INDICATORS, get as get_indicator
+from kaufman_indicators.registry_meta import (
+    INDICATOR_META,
+    get_meta,
+    list_by_category,
+    list_by_input,
+    schema,
+    defaults,
+    required_params,
+    output_fields,
+    validate_meta,
+)
 
 __all__ = [
     # trend
@@ -74,4 +85,13 @@ __all__ = [
     # registry
     "INDICATORS",
     "get_indicator",
+    "INDICATOR_META",
+    "get_meta",
+    "list_by_category",
+    "list_by_input",
+    "schema",
+    "defaults",
+    "required_params",
+    "output_fields",
+    "validate_meta",
 ]

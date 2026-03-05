@@ -19,6 +19,7 @@ import numpy as np
 from typing import NamedTuple
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 from kaufman_indicators.utils.rolling import rolling_max, rolling_min, rolling_mean
 
 
@@ -31,6 +32,7 @@ class StochasticResult(NamedTuple):
     """%D – smoothed stochastic (signal line)."""
 
 
+@pandas_aware
 def stochastic(
     high: np.ndarray,
     low: np.ndarray,

@@ -71,3 +71,24 @@ class TestMomentum:
         result = momentum(prices)  # default period=10
         assert np.all(np.isnan(result[:10]))
         np.testing.assert_allclose(result[10], 10.0, atol=1e-10)
+
+    def test_period_equals_length(self):
+        prices = np.arange(1.0, 11.0)
+        result = momentum(prices, period=10)
+        assert np.all(np.isnan(result))
+
+    def test_alternating_prices(self):
+        # Alternating prices with period=2 → momentum should alternate
+        prices = np.array([10.0, 20.0, 10.0, 20.0, 10.0, 20.0])
+        result = momentum(prices, period=2)
+        np.testing.assert_allclose(result[2], 0.0, atol=1e-10)
+        np.testing.assert_allclose(result[3], 0.0, atol=1e-10)
+
+    def test_single_step_change(self):
+        # Flat, then jump, then flat → momentum reflects the jump
+        prices = np.array([100.0] * 5 + [110.0] * 5)
+        result = momentum(prices, period=3)
+        # At index 5: 110 - 100 = 10
+        np.testing.assert_allclose(result[5], 10.0, atol=1e-10)
+        # At index 8: 110 - 110 = 0 (both sides past the jump)
+        np.testing.assert_allclose(result[8], 0.0, atol=1e-10)

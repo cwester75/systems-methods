@@ -15,6 +15,7 @@ import numpy as np
 from typing import NamedTuple
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 
 
 class LinRegResult(NamedTuple):
@@ -31,6 +32,7 @@ class LinRegResult(NamedTuple):
     """Coefficient of determination (R²) of the regression."""
 
 
+@pandas_aware
 def linreg(prices: np.ndarray, period: int = 14) -> LinRegResult:
     """Rolling linear regression over *period* bars.
 
@@ -86,6 +88,7 @@ def linreg(prices: np.ndarray, period: int = 14) -> LinRegResult:
     return LinRegResult(value, slope, intercept, r_squared)
 
 
+@pandas_aware
 def linreg_forecast(prices: np.ndarray, period: int = 14, offset: int = 1) -> np.ndarray:
     """Rolling linear regression *forecast* ``offset`` bars ahead.
 

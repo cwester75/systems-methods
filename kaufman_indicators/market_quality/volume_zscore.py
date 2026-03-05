@@ -14,9 +14,11 @@ Kaufman, P. J. (2013). *Trading Systems and Methods* (5th ed.), Chapter 20.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 from kaufman_indicators.utils.rolling import rolling_mean, rolling_std
 
 
+@pandas_aware
 def volume_zscore(
     volume: np.ndarray,
     period: int = 20,
