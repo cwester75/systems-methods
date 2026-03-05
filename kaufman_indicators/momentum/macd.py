@@ -16,6 +16,7 @@ import numpy as np
 from typing import NamedTuple
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 from kaufman_indicators.trend.moving_averages import ema
 
 
@@ -30,6 +31,7 @@ class MACDResult(NamedTuple):
     """Histogram = MACD line − signal line."""
 
 
+@pandas_aware
 def macd(
     prices: np.ndarray,
     fast: int = 12,

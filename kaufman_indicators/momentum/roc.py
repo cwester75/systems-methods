@@ -12,8 +12,10 @@ Kaufman, P. J. (2013). *Trading Systems and Methods* (5th ed.), Chapter 11.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 
 
+@pandas_aware
 def roc(prices: np.ndarray, period: int = 12) -> np.ndarray:
     """Rate of Change.
 

@@ -18,9 +18,11 @@ Kaufman, P. J. (2013). *Trading Systems and Methods* (5th ed.), Chapter 17.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 from kaufman_indicators.trend.efficiency_ratio import efficiency_ratio
 
 
+@pandas_aware
 def kama(
     prices: np.ndarray,
     period: int = 10,

@@ -18,6 +18,7 @@ Pincus, S. M. (1991). Approximate entropy as a measure of system complexity.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array, log_returns
+from kaufman_indicators.utils.output import pandas_aware
 
 
 def _approx_entropy(series: np.ndarray, m: int = 2, r_scale: float = 0.2) -> float:
@@ -54,6 +55,7 @@ def _approx_entropy(series: np.ndarray, m: int = 2, r_scale: float = 0.2) -> flo
     return _phi(m) - _phi(m + 1)
 
 
+@pandas_aware
 def price_entropy(
     prices: np.ndarray,
     period: int = 50,

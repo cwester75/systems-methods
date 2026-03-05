@@ -13,9 +13,11 @@ Kaufman, P. J. (2013). *Trading Systems and Methods* (5th ed.), Chapter 21.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array, log_returns
+from kaufman_indicators.utils.output import pandas_aware
 from kaufman_indicators.utils.rolling import rolling_std
 
 
+@pandas_aware
 def realized_vol(
     prices: np.ndarray,
     period: int = 20,

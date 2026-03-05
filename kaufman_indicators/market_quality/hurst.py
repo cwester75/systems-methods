@@ -19,6 +19,7 @@ Hurst, H. E. (1951). Long-term storage capacity of reservoirs.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array, log_returns
+from kaufman_indicators.utils.output import pandas_aware
 
 
 def _rs_hurst(log_ret: np.ndarray) -> float:
@@ -60,6 +61,7 @@ def _rs_hurst(log_ret: np.ndarray) -> float:
     return float(coeffs[0])
 
 
+@pandas_aware
 def hurst_exponent(prices: np.ndarray, period: int = 100) -> np.ndarray:
     """Rolling Hurst Exponent via R/S analysis.
 

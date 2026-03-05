@@ -15,9 +15,11 @@ Kaufman, P. J. (2013). *Trading Systems and Methods* (5th ed.), Chapter 7.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 from kaufman_indicators.utils.rolling import rolling_mean
 
 
+@pandas_aware
 def sma(prices: np.ndarray, period: int) -> np.ndarray:
     """Simple Moving Average.
 
@@ -37,6 +39,7 @@ def sma(prices: np.ndarray, period: int) -> np.ndarray:
     return rolling_mean(prices, period)
 
 
+@pandas_aware
 def ema(prices: np.ndarray, period: int, alpha: float | None = None) -> np.ndarray:
     """Exponential Moving Average.
 
@@ -79,6 +82,7 @@ def ema(prices: np.ndarray, period: int, alpha: float | None = None) -> np.ndarr
     return result
 
 
+@pandas_aware
 def wma(prices: np.ndarray, period: int) -> np.ndarray:
     """Linearly Weighted Moving Average.
 
@@ -108,6 +112,7 @@ def wma(prices: np.ndarray, period: int) -> np.ndarray:
     return result
 
 
+@pandas_aware
 def dema(prices: np.ndarray, period: int) -> np.ndarray:
     """Double Exponential Moving Average.
 
@@ -132,6 +137,7 @@ def dema(prices: np.ndarray, period: int) -> np.ndarray:
     return 2.0 * e1 - e2
 
 
+@pandas_aware
 def tema(prices: np.ndarray, period: int) -> np.ndarray:
     """Triple Exponential Moving Average.
 

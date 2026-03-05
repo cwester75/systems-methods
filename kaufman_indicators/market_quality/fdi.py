@@ -22,8 +22,10 @@ Sevcik, C. (1990). A procedure to estimate the fractal dimension of waveforms.
 import numpy as np
 
 from kaufman_indicators.utils.math_helpers import to_float_array
+from kaufman_indicators.utils.output import pandas_aware
 
 
+@pandas_aware
 def fdi(prices: np.ndarray, period: int = 30) -> np.ndarray:
     """Calculate the Fractal Dimension Index over a rolling *period*.
 
