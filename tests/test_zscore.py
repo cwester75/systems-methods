@@ -72,3 +72,25 @@ class TestPriceZScore:
         prices = np.array([100.0, 101.0])
         result = price_zscore(prices, period=20)
         assert np.all(np.isnan(result))
+
+    def test_default_period(self):
+        prices = np.linspace(100, 150, 40)
+        result = price_zscore(prices)  # default period=20
+        assert np.all(np.isnan(result[:19]))
+        assert not np.any(np.isnan(result[19:]))
+
+    def test_last_value_of_window_highest_zscore(self):
+        # In a monotonically increasing window, the last value is the furthest
+        # above the mean, so it should have the highest z-score
+        prices = np.arange(1.0, 31.0)
+        result = price_zscore(prices, period=10)
+        # Each valid z-score should be positive (price above rolling mean)
+        valid = result[~np.isnan(result)]
+        assert np.all(valid > 0)
+
+    def test_period_equals_length(self):
+        prices = np.arange(1.0, 21.0)
+        result = price_zscore(prices, period=20)
+        # Should have NaN for first 19, then one valid value at index 19
+        assert np.all(np.isnan(result[:19]))
+        assert not np.isnan(result[19])

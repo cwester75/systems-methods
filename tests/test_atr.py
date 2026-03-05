@@ -48,6 +48,40 @@ class TestTrueRange:
         with pytest.raises(ValueError):
             true_range(np.array([1.0, 2.0]), np.array([1.0]), np.array([1.0, 2.0]))
 
+    def test_gap_down_increases_tr(self):
+        # Close at 100, then gap-down: high=90, low=80 → |low-prev_close|=20
+        high = np.array([105.0, 90.0])
+        low = np.array([95.0, 80.0])
+        close = np.array([100.0, 85.0])
+        tr = true_range(high, low, close)
+        # max(90-80=10, |90-100|=10, |80-100|=20) = 20
+        assert tr[1] == pytest.approx(20.0)
+
+    def test_known_values_multiple_bars(self):
+        high = np.array([50.0, 48.0, 55.0])
+        low = np.array([44.0, 42.0, 46.0])
+        close = np.array([47.0, 43.0, 52.0])
+        tr = true_range(high, low, close)
+        # Bar 0: 50-44 = 6
+        assert tr[0] == pytest.approx(6.0)
+        # Bar 1: max(48-42=6, |48-47|=1, |42-47|=5) = 6
+        assert tr[1] == pytest.approx(6.0)
+        # Bar 2: max(55-46=9, |55-43|=12, |46-43|=3) = 12
+        assert tr[2] == pytest.approx(12.0)
+
+    def test_flat_prices_zero_tr(self):
+        n = 10
+        price = np.full(n, 100.0)
+        tr = true_range(price, price, price)
+        np.testing.assert_allclose(tr, 0.0, atol=1e-10)
+
+    def test_tr_at_least_hl_diff(self):
+        # True range is always >= high - low
+        high, low, close = _make_ohlc(50)
+        tr = true_range(high, low, close)
+        hl = high - low
+        assert np.all(tr >= hl - 1e-10)
+
 
 class TestATR:
     def test_returns_correct_length(self):
