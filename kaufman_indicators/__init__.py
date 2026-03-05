@@ -6,7 +6,7 @@ Subpackages
 -----------
 trend           : Efficiency Ratio, KAMA, Linear Regression, Moving Averages
 momentum        : Rate of Change, RSI, MACD, Stochastic, Momentum
-volatility      : True Range, ATR, Realized Volatility
+volatility      : True Range, ATR, Realized Volatility, Parkinson, Garman-Klass
 range           : Bollinger Bands, Donchian Channels, Williams %R
 market_quality  : Fractal Dimension Index, Hurst Exponent, Entropy
 utils           : Rolling helpers, Math helpers
@@ -26,6 +26,8 @@ from kaufman_indicators.momentum.momentum import momentum
 from kaufman_indicators.volatility.true_range import true_range
 from kaufman_indicators.volatility.atr import atr
 from kaufman_indicators.volatility.realized_vol import realized_vol
+from kaufman_indicators.volatility.parkinson import parkinson_vol
+from kaufman_indicators.volatility.garman_klass import garman_klass_vol
 
 from kaufman_indicators.range.bollinger import bollinger_bands
 from kaufman_indicators.range.donchian import donchian_channels
@@ -51,6 +53,8 @@ __all__ = [
     "true_range",
     "atr",
     "realized_vol",
+    "parkinson_vol",
+    "garman_klass_vol",
     # range
     "bollinger_bands",
     "donchian_channels",
