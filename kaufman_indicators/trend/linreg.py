@@ -27,6 +27,8 @@ class LinRegResult(NamedTuple):
     """Slope of the regression line in price-per-bar units."""
     intercept: np.ndarray
     """Y-intercept of the regression line."""
+    r_squared: np.ndarray
+    """Coefficient of determination (R²) of the regression."""
 
 
 def linreg(prices: np.ndarray, period: int = 14) -> LinRegResult:
@@ -57,9 +59,10 @@ def linreg(prices: np.ndarray, period: int = 14) -> LinRegResult:
     value = np.full(n, np.nan)
     slope = np.full(n, np.nan)
     intercept = np.full(n, np.nan)
+    r_squared = np.full(n, np.nan)
 
     if n < period:
-        return LinRegResult(value, slope, intercept)
+        return LinRegResult(value, slope, intercept, r_squared)
 
     x = np.arange(period, dtype=float)
     x_mean = x.mean()
@@ -68,13 +71,19 @@ def linreg(prices: np.ndarray, period: int = 14) -> LinRegResult:
     for i in range(period - 1, n):
         y = prices[i - period + 1: i + 1]
         y_mean = y.mean()
-        s = np.sum((x - x_mean) * (y - y_mean)) / ss_xx
+        ss_xy = np.sum((x - x_mean) * (y - y_mean))
+        ss_yy = np.sum((y - y_mean) ** 2)
+        s = ss_xy / ss_xx
         b = y_mean - s * x_mean
         value[i] = s * (period - 1) + b
         slope[i] = s
         intercept[i] = b
+        if ss_yy != 0:
+            r_squared[i] = (ss_xy ** 2) / (ss_xx * ss_yy)
+        else:
+            r_squared[i] = 1.0  # all y-values identical → perfect fit
 
-    return LinRegResult(value, slope, intercept)
+    return LinRegResult(value, slope, intercept, r_squared)
 
 
 def linreg_forecast(prices: np.ndarray, period: int = 14, offset: int = 1) -> np.ndarray:

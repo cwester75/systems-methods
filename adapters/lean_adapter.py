@@ -79,6 +79,31 @@ class LeanIndicatorAdapter:
         """Weighted Moving Average."""
         return ki.wma(close, period)
 
+    def dema(self, close: Any, period: int = 20) -> np.ndarray:
+        """Double Exponential Moving Average."""
+        return ki.dema(close, period)
+
+    def tema(self, close: Any, period: int = 20) -> np.ndarray:
+        """Triple Exponential Moving Average."""
+        return ki.tema(close, period)
+
+    def linreg(self, close: Any, period: int = 14) -> dict[str, np.ndarray]:
+        """Linear Regression – returns a dict with keys ``value``, ``slope``,
+        ``intercept``, ``r_squared``."""
+        result = ki.linreg(close, period)
+        return {
+            "value": result.value,
+            "slope": result.slope,
+            "intercept": result.intercept,
+            "r_squared": result.r_squared,
+        }
+
+    def linreg_forecast(
+        self, close: Any, period: int = 14, offset: int = 1
+    ) -> np.ndarray:
+        """Linear Regression Forecast."""
+        return ki.linreg_forecast(close, period, offset)
+
     # ------------------------------------------------------------------ #
     #  Momentum                                                            #
     # ------------------------------------------------------------------ #
@@ -106,6 +131,10 @@ class LeanIndicatorAdapter:
             "signal": result.signal,
             "histogram": result.histogram,
         }
+
+    def momentum(self, close: Any, period: int = 10) -> np.ndarray:
+        """Momentum (absolute price change)."""
+        return ki.momentum(close, period)
 
     def stochastic(
         self,
@@ -149,6 +178,32 @@ class LeanIndicatorAdapter:
         """Realized (historical) volatility."""
         return ki.realized_vol(close, period, annualize, periods_per_year)
 
+    def parkinson_vol(
+        self,
+        high: Any,
+        low: Any,
+        period: int = 20,
+        annualize: bool = True,
+        periods_per_year: int = 252,
+    ) -> np.ndarray:
+        """Parkinson (high-low) volatility."""
+        return ki.parkinson_vol(high, low, period, annualize, periods_per_year)
+
+    def garman_klass_vol(
+        self,
+        open_: Any,
+        high: Any,
+        low: Any,
+        close: Any,
+        period: int = 20,
+        annualize: bool = True,
+        periods_per_year: int = 252,
+    ) -> np.ndarray:
+        """Garman-Klass (OHLC) volatility."""
+        return ki.garman_klass_vol(
+            open_, high, low, close, period, annualize, periods_per_year
+        )
+
     # ------------------------------------------------------------------ #
     #  Range                                                               #
     # ------------------------------------------------------------------ #
@@ -184,6 +239,10 @@ class LeanIndicatorAdapter:
         """Williams %R."""
         return ki.williams_r(high, low, close, period)
 
+    def price_zscore(self, close: Any, period: int = 20) -> np.ndarray:
+        """Price Z-Score."""
+        return ki.price_zscore(close, period)
+
     # ------------------------------------------------------------------ #
     #  Market Quality                                                      #
     # ------------------------------------------------------------------ #
@@ -204,3 +263,133 @@ class LeanIndicatorAdapter:
     ) -> np.ndarray:
         """Price series entropy."""
         return ki.price_entropy(close, period, method)
+
+    def volume_roc(self, volume: Any, period: int = 12) -> np.ndarray:
+        """Volume Rate of Change (%)."""
+        return ki.volume_roc(volume, period)
+
+    def volume_zscore(self, volume: Any, period: int = 20) -> np.ndarray:
+        """Volume Z-Score."""
+        return ki.volume_zscore(volume, period)
+
+
+class IndicatorLibrary:
+    """Batch indicator computation for QCAlgorithm data streams.
+
+    Provides a single :meth:`compute` call that accepts a LEAN history
+    DataFrame and returns a dictionary of all computed indicators.
+
+    Usage example (inside a LEAN ``QCAlgorithm``)::
+
+        from adapters.lean_adapter import IndicatorLibrary
+
+        class MyAlgorithm(QCAlgorithm):
+            def Initialize(self):
+                self.symbol = self.AddEquity("SPY", Resolution.Daily).Symbol
+                self.lib = IndicatorLibrary(self)
+
+            def OnData(self, data):
+                history = self.History(self.symbol, 200, Resolution.Daily)
+                if history.empty:
+                    return
+                indicators = self.lib.compute(history)
+                self.Debug(f"RSI={indicators['rsi'][-1]:.2f}")
+
+    Parameters
+    ----------
+    algorithm:
+        The ``QCAlgorithm`` instance.  Stored for potential future use
+        (e.g. logging via ``algorithm.Debug``), but not required for
+        computation.
+    """
+
+    def __init__(self, algorithm: Any = None) -> None:
+        self.algorithm = algorithm
+
+    def compute(self, history: Any) -> dict[str, Any]:
+        """Compute all indicators from a LEAN history DataFrame.
+
+        Parameters
+        ----------
+        history:
+            A ``pandas.DataFrame`` with columns ``close``, ``high``,
+            ``low``, and optionally ``open`` and ``volume``.
+
+        Returns
+        -------
+        dict[str, Any]
+            Dictionary mapping indicator names to numpy arrays (or dicts
+            for multi-output indicators like MACD, Bollinger, etc.).
+        """
+        close = np.asarray(history["close"], dtype=float)
+        high = np.asarray(history["high"], dtype=float)
+        low = np.asarray(history["low"], dtype=float)
+
+        has_open = "open" in history.columns
+        has_volume = "volume" in history.columns
+
+        indicators: dict[str, Any] = {}
+
+        # -- Trend --------------------------------------------------------
+        indicators["efficiency_ratio"] = ki.efficiency_ratio(close)
+        indicators["kama"] = ki.kama(close)
+        indicators["sma"] = ki.sma(close, period=20)
+        indicators["ema"] = ki.ema(close, period=20)
+
+        lr = ki.linreg(close)
+        indicators["linreg_slope"] = lr.slope
+        indicators["linreg_intercept"] = lr.intercept
+        indicators["linreg_r_squared"] = lr.r_squared
+
+        # -- Momentum -----------------------------------------------------
+        indicators["roc"] = ki.roc(close)
+        indicators["rsi"] = ki.rsi(close)
+        indicators["momentum"] = ki.momentum(close)
+
+        macd_result = ki.macd(close)
+        indicators["macd"] = macd_result.macd_line
+        indicators["macd_signal"] = macd_result.signal
+        indicators["macd_histogram"] = macd_result.histogram
+
+        indicators["stochastic_k"] = ki.stochastic(high, low, close).k
+        indicators["stochastic_d"] = ki.stochastic(high, low, close).d
+
+        # -- Volatility ---------------------------------------------------
+        indicators["atr"] = ki.atr(high, low, close)
+        indicators["true_range"] = ki.true_range(high, low, close)
+        indicators["realized_vol"] = ki.realized_vol(close)
+        indicators["parkinson_vol"] = ki.parkinson_vol(high, low)
+
+        if has_open:
+            open_ = np.asarray(history["open"], dtype=float)
+            indicators["garman_klass_vol"] = ki.garman_klass_vol(
+                open_, high, low, close
+            )
+
+        # -- Range --------------------------------------------------------
+        bb = ki.bollinger_bands(close)
+        indicators["bollinger_upper"] = bb.upper
+        indicators["bollinger_middle"] = bb.middle
+        indicators["bollinger_lower"] = bb.lower
+        indicators["bollinger_bandwidth"] = bb.bandwidth
+        indicators["bollinger_percent_b"] = bb.percent_b
+
+        dc = ki.donchian_channels(high, low)
+        indicators["donchian_upper"] = dc.upper
+        indicators["donchian_lower"] = dc.lower
+        indicators["donchian_mid"] = dc.mid
+
+        indicators["williams_r"] = ki.williams_r(high, low, close)
+        indicators["price_zscore"] = ki.price_zscore(close)
+
+        # -- Market Quality -----------------------------------------------
+        indicators["fdi"] = ki.fdi(close)
+        indicators["hurst_exponent"] = ki.hurst_exponent(close)
+        indicators["entropy"] = ki.price_entropy(close)
+
+        if has_volume:
+            volume = np.asarray(history["volume"], dtype=float)
+            indicators["volume_roc"] = ki.volume_roc(volume)
+            indicators["volume_zscore"] = ki.volume_zscore(volume)
+
+        return indicators

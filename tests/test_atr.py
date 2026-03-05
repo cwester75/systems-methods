@@ -75,6 +75,40 @@ class TestATR:
         valid = result[~np.isnan(result)]
         np.testing.assert_allclose(valid, 10.0, atol=1e-6)
 
+    def test_flat_series_zero_atr(self):
+        # When H == L == C (no range, no gaps), ATR should be 0
+        n = 50
+        price = np.full(n, 100.0)
+        result = atr(price, price, price, period=14)
+        valid = result[~np.isnan(result)]
+        np.testing.assert_allclose(valid, 0.0, atol=1e-10)
+
+    def test_noisy_series_higher_atr(self):
+        # Noisier prices should produce higher ATR than calm prices
+        n = 100
+        calm_close = np.full(n, 100.0)
+        calm_high = np.full(n, 101.0)
+        calm_low = np.full(n, 99.0)
+        rng = np.random.default_rng(42)
+        noisy_close = 100 + np.cumsum(rng.standard_normal(n))
+        noisy_spread = np.abs(rng.standard_normal(n)) * 5 + 1
+        noisy_high = noisy_close + noisy_spread
+        noisy_low = noisy_close - noisy_spread
+        atr_calm = atr(calm_high, calm_low, calm_close, period=14)
+        atr_noisy = atr(noisy_high, noisy_low, noisy_close, period=14)
+        assert np.nanmean(atr_noisy) > np.nanmean(atr_calm)
+
+    def test_trending_constant_spread_stable_atr(self):
+        # Trending prices with constant H-L spread → ATR should be stable
+        n = 80
+        close = np.linspace(100, 200, n)
+        high = close + 3.0
+        low = close - 3.0
+        result = atr(high, low, close, period=14)
+        valid = result[~np.isnan(result)]
+        # With constant spread of 6 and no gaps, ATR ≈ 6
+        np.testing.assert_allclose(valid[-20:], 6.0, atol=0.5)
+
     def test_mismatched_lengths_raise(self):
         with pytest.raises(ValueError):
             atr(np.array([1.0, 2.0]), np.array([1.0]), np.array([1.0, 2.0]))
