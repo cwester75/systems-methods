@@ -20,8 +20,10 @@ ATR-based risk normalization.
 
 import numpy as np
 
+from kaufman_systems.base import TradingSystem
 
-class KAMASystem:
+
+class KAMASystem(TradingSystem):
 
     def __init__(
         self,
@@ -108,8 +110,9 @@ class KAMASystem:
     # Core Interface
     # ---------------------------------------------------------
 
-    def signal(self, closes):
+    def signal(self, data):
 
+        closes = data["closes"]
         kama_val = self.kama(closes)
 
         if kama_val is None:
@@ -125,19 +128,29 @@ class KAMASystem:
 
         return 0
 
-    def position_sizing(self, equity, highs, lows, closes):
+    def position_sizing(self, data, risk):
+
+        highs = data["highs"]
+        lows = data["lows"]
+        closes = data["closes"]
+        equity = risk["equity"]
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
 
         atr = self.atr(highs, lows, closes)
 
         if atr is None or atr == 0:
             return 0
 
-        risk_amount = equity * self.risk_per_trade
+        risk_amount = equity * risk_per_trade
         position = risk_amount / atr
 
         return position
 
-    def risk_filter(self, highs, lows, closes):
+    def risk_filter(self, data):
+
+        highs = data["highs"]
+        lows = data["lows"]
+        closes = data["closes"]
 
         atr = self.atr(highs, lows, closes)
 
@@ -153,7 +166,9 @@ class KAMASystem:
     # Diagnostics
     # ---------------------------------------------------------
 
-    def indicators(self, closes):
+    def indicators(self, data):
+
+        closes = data["closes"]
 
         return {
             "kama": self.kama(closes),

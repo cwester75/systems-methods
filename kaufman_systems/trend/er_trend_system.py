@@ -18,8 +18,10 @@ Otherwise → FLAT
 
 import numpy as np
 
+from kaufman_systems.base import TradingSystem
 
-class ERTrendSystem:
+
+class ERTrendSystem(TradingSystem):
     def __init__(
         self,
         er_period: int = 10,
@@ -72,7 +74,7 @@ class ERTrendSystem:
     # Core system interface
     # ---------------------------------------------------------
 
-    def signal(self, closes):
+    def signal(self, data):
         """
         Returns:
             1  -> Long
@@ -80,6 +82,7 @@ class ERTrendSystem:
             0  -> Flat
         """
 
+        closes = data["closes"]
         er = self.efficiency_ratio(closes)
 
         if er is None:
@@ -97,25 +100,35 @@ class ERTrendSystem:
         else:
             return 0
 
-    def position_sizing(self, equity, highs, lows, closes):
+    def position_sizing(self, data, risk):
         """
         ATR risk model sizing
         """
+
+        highs = data["highs"]
+        lows = data["lows"]
+        closes = data["closes"]
+        equity = risk["equity"]
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
 
         atr = self.atr(highs, lows, closes)
 
         if atr is None or atr == 0:
             return 0
 
-        risk_amount = equity * self.risk_per_trade
+        risk_amount = equity * risk_per_trade
         position = risk_amount / atr
 
         return position
 
-    def risk_filter(self, highs, lows, closes):
+    def risk_filter(self, data):
         """
         Basic volatility sanity filter
         """
+
+        highs = data["highs"]
+        lows = data["lows"]
+        closes = data["closes"]
 
         atr = self.atr(highs, lows, closes)
 
@@ -131,10 +144,12 @@ class ERTrendSystem:
     # Diagnostics
     # ---------------------------------------------------------
 
-    def indicators(self, closes):
+    def indicators(self, data):
         """
         Returns diagnostic values for research / plotting
         """
+
+        closes = data["closes"]
 
         return {
             "efficiency_ratio": self.efficiency_ratio(closes),
