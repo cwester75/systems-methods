@@ -393,3 +393,86 @@ class IndicatorLibrary:
             indicators["volume_zscore"] = ki.volume_zscore(volume)
 
         return indicators
+
+
+class LeanSystemAdapter:
+    """Bridge between any :class:`TradingSystem` and a LEAN ``QCAlgorithm``.
+
+    Translates LEAN history DataFrames into the standardised ``data`` / ``risk``
+    dicts that every trading system expects, so integration requires no
+    system-specific glue code.
+
+    Usage example (inside a LEAN ``QCAlgorithm``)::
+
+        from adapters.lean_adapter import LeanSystemAdapter
+        from kaufman_systems.trend.er_trend_system import ERTrendSystem
+
+        class MyAlgorithm(QCAlgorithm):
+            def Initialize(self):
+                self.symbol = self.AddEquity("SPY", Resolution.Daily).Symbol
+                self.system = LeanSystemAdapter(ERTrendSystem())
+
+            def OnData(self, data):
+                history = self.History(self.symbol, 100, Resolution.Daily)
+                if history.empty:
+                    return
+                sig = self.system.signal(history)
+                if sig == 1:
+                    self.SetHoldings(self.symbol, 1.0)
+                elif sig == -1:
+                    self.Liquidate(self.symbol)
+
+    Parameters
+    ----------
+    system:
+        Any object conforming to the :class:`TradingSystem` interface.
+    equity:
+        Default account equity for position sizing.
+    risk_per_trade:
+        Default fraction of equity risked per trade.
+    """
+
+    def __init__(
+        self,
+        system: Any,
+        equity: float = 100_000.0,
+        risk_per_trade: float = 0.01,
+    ) -> None:
+        self.system = system
+        self.equity = equity
+        self.risk_per_trade = risk_per_trade
+
+    @staticmethod
+    def _to_data(history: Any) -> dict[str, np.ndarray]:
+        """Convert a LEAN history DataFrame to the standard data dict."""
+        return {
+            "closes": np.asarray(history["close"], dtype=float),
+            "highs": np.asarray(history["high"], dtype=float),
+            "lows": np.asarray(history["low"], dtype=float),
+        }
+
+    def _risk(self, equity: float | None = None) -> dict[str, float]:
+        return {
+            "equity": equity if equity is not None else self.equity,
+            "risk_per_trade": self.risk_per_trade,
+        }
+
+    def signal(self, history: Any) -> int:
+        """Generate a trading signal from a LEAN history DataFrame."""
+        return self.system.signal(self._to_data(history))
+
+    def position_sizing(
+        self, history: Any, equity: float | None = None
+    ) -> float:
+        """Calculate position size from a LEAN history DataFrame."""
+        return self.system.position_sizing(
+            self._to_data(history), self._risk(equity)
+        )
+
+    def risk_filter(self, history: Any) -> bool:
+        """Run the risk filter on a LEAN history DataFrame."""
+        return self.system.risk_filter(self._to_data(history))
+
+    def indicators(self, history: Any) -> dict:
+        """Return diagnostic indicators from a LEAN history DataFrame."""
+        return self.system.indicators(self._to_data(history))
