@@ -16,6 +16,7 @@ from kaufman_systems.base import TradingSystem
 from kaufman_systems.trend.er_trend_system import ERTrendSystem
 from kaufman_systems.trend.linear_regression_trend import LinearRegressionTrendSystem
 from kaufman_systems.moving_average.dual_ma_system import DualMASystem
+from kaufman_systems.moving_average.triple_ma_system import TripleMASystem
 from kaufman_systems.moving_average.kama_system import KAMASystem
 from kaufman_systems.breakout.atr_breakout_system import ATRBreakoutSystem
 from kaufman_systems.breakout.donchian_breakout_system import DonchianBreakoutSystem
@@ -41,6 +42,7 @@ ALL_SYSTEMS = [
     ERTrendSystem(),
     LinearRegressionTrendSystem(),
     DualMASystem(),
+    TripleMASystem(),
     KAMASystem(),
     ATRBreakoutSystem(),
     DonchianBreakoutSystem(),

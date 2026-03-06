@@ -13,6 +13,7 @@ from kaufman_systems.base import TradingSystem
 from kaufman_systems.trend.er_trend_system import ERTrendSystem
 from kaufman_systems.trend.linear_regression_trend import LinearRegressionTrendSystem
 from kaufman_systems.moving_average.dual_ma_system import DualMASystem
+from kaufman_systems.moving_average.triple_ma_system import TripleMASystem
 from kaufman_systems.moving_average.kama_system import KAMASystem
 from kaufman_systems.momentum.dual_roc_system import DualROCSystem
 from kaufman_systems.momentum.rsi_reversal_system import RSIReversalSystem
@@ -166,6 +167,62 @@ class TestDualMASystem:
     def test_fast_ma_above_slow_in_uptrend(self):
         ind = self.sys.indicators(DATA_UP)
         assert ind["fast_ma"] > ind["slow_ma"]
+
+
+# ===================================================================
+# 3b. TripleMASystem
+# ===================================================================
+
+class TestTripleMASystem:
+
+    def setup_method(self):
+        self.sys = TripleMASystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_long_on_uptrend(self):
+        # In uptrend, fast MA > medium MA > slow MA
+        assert self.sys.signal(DATA_UP) == 1
+
+    def test_short_on_downtrend(self):
+        assert self.sys.signal(DATA_DOWN) == -1
+
+    def test_flat_returns_zero(self):
+        # All MAs converge to same value
+        assert self.sys.signal(DATA_FLAT) == 0
+
+    def test_parameter_validation(self):
+        with pytest.raises(ValueError):
+            TripleMASystem(fast_period=50, medium_period=25, slow_period=10)
+
+    def test_parameter_validation_fast_equals_medium(self):
+        with pytest.raises(ValueError):
+            TripleMASystem(fast_period=25, medium_period=25, slow_period=50)
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "fast_ma" in ind
+        assert "medium_ma" in ind
+        assert "slow_ma" in ind
+
+    def test_ma_ordering_in_uptrend(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert ind["fast_ma"] > ind["medium_ma"] > ind["slow_ma"]
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+        assert self.sys.position_sizing(DATA_SHORT, RISK) == 0
+
+    def test_position_sizing_positive_on_valid_data(self):
+        size = self.sys.position_sizing(DATA_UP, RISK)
+        assert size > 0
+
+    def test_risk_filter_true_on_valid_data(self):
+        assert self.sys.risk_filter(DATA_UP) is True
+
+    def test_risk_filter_false_on_short_data(self):
+        assert self.sys.risk_filter(DATA_SHORT) is False
 
 
 # ===================================================================
@@ -466,6 +523,7 @@ class TestPositionSizingMath:
         ERTrendSystem(),
         LinearRegressionTrendSystem(),
         DualMASystem(),
+        TripleMASystem(),
         KAMASystem(),
         DualROCSystem(),
         RSIReversalSystem(),
