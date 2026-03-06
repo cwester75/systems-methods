@@ -18,11 +18,12 @@ Exit
     end-of-day or opposite signal
 """
 
-import pandas as pd
 import numpy as np
 
+from kaufman_systems.base import TradingSystem
 
-class OpeningGapSystem:
+
+class OpeningGapSystem(TradingSystem):
 
     def __init__(
         self,
@@ -44,92 +45,107 @@ class OpeningGapSystem:
         self.atr_period = atr_period
         self.risk_per_trade = risk_per_trade
 
-
     # ---------------------------------------------------------
     # ATR Calculation
     # ---------------------------------------------------------
 
-    def atr(self, df: pd.DataFrame) -> pd.Series:
+    def _atr(self, highs, lows, closes):
+        highs = np.asarray(highs, dtype=float)
+        lows = np.asarray(lows, dtype=float)
+        closes = np.asarray(closes, dtype=float)
 
-        high = df["high"]
-        low = df["low"]
-        close = df["close"]
+        if len(closes) < self.atr_period + 1:
+            return None
 
-        prev_close = close.shift(1)
+        tr = np.maximum(
+            highs[1:] - lows[1:],
+            np.maximum(
+                np.abs(highs[1:] - closes[:-1]),
+                np.abs(lows[1:] - closes[:-1]),
+            ),
+        )
 
-        tr = pd.concat(
-            [
-                high - low,
-                abs(high - prev_close),
-                abs(low - prev_close)
-            ],
-            axis=1
-        ).max(axis=1)
-
-        atr = tr.rolling(self.atr_period).mean()
-
-        return atr
-
+        return np.mean(tr[-self.atr_period:])
 
     # ---------------------------------------------------------
     # Signal Generation
     # ---------------------------------------------------------
 
-    def signal(self, df: pd.DataFrame) -> int:
+    def signal(self, data: dict) -> int:
         """
+        ``data`` must include ``closes``, ``highs``, ``lows``, and ``opens``.
+
         Returns
         -------
         1 = long
         -1 = short
         0 = no signal
         """
+        closes = np.asarray(data["closes"], dtype=float)
+        highs = np.asarray(data["highs"], dtype=float)
+        lows = np.asarray(data["lows"], dtype=float)
+        opens = np.asarray(data["opens"], dtype=float)
 
-        atr = self.atr(df).iloc[-1]
+        atr = self._atr(highs, lows, closes)
 
-        open_price = df["open"].iloc[-1]
-        prev_close = df["close"].iloc[-2]
+        if atr is None or atr == 0:
+            return 0
 
-        gap = open_price - prev_close
+        gap = opens[-1] - closes[-2]
 
         if gap > self.gap_threshold * atr:
             return 1
 
-        elif gap < -self.gap_threshold * atr:
+        if gap < -self.gap_threshold * atr:
             return -1
 
         return 0
-
 
     # ---------------------------------------------------------
     # Position Sizing
     # ---------------------------------------------------------
 
-    def position_sizing(
-        self,
-        capital: float,
-        atr_value: float
-    ) -> float:
-        """
-        ATR-based position sizing
-        """
+    def position_sizing(self, data: dict, risk: dict) -> float:
+        """ATR-based position sizing."""
+        highs = np.asarray(data["highs"], dtype=float)
+        lows = np.asarray(data["lows"], dtype=float)
+        closes = np.asarray(data["closes"], dtype=float)
 
-        risk_dollars = capital * self.risk_per_trade
+        equity = risk["equity"]
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
 
-        position = risk_dollars / atr_value
+        atr = self._atr(highs, lows, closes)
 
-        return position
+        if atr is None or atr == 0:
+            return 0
 
+        return equity * risk_per_trade / atr
 
     # ---------------------------------------------------------
     # Risk Filter
     # ---------------------------------------------------------
 
-    def risk_filter(self, df: pd.DataFrame) -> bool:
-        """
-        Optional liquidity filter
-        """
+    def risk_filter(self, data: dict) -> bool:
+        """Liquidity filter — requires volume above 20-day average."""
+        volumes = np.asarray(data["volumes"], dtype=float)
 
-        volume = df["volume"].iloc[-1]
-        avg_volume = df["volume"].rolling(20).mean().iloc[-1]
+        if len(volumes) < 20:
+            return False
 
-        return volume > avg_volume
+        avg_volume = np.mean(volumes[-20:])
+        return float(volumes[-1]) > avg_volume
+
+    # ---------------------------------------------------------
+    # Indicators
+    # ---------------------------------------------------------
+
+    def indicators(self, data: dict) -> dict:
+        highs = np.asarray(data["highs"], dtype=float)
+        lows = np.asarray(data["lows"], dtype=float)
+        closes = np.asarray(data["closes"], dtype=float)
+        opens = np.asarray(data["opens"], dtype=float)
+
+        atr = self._atr(highs, lows, closes)
+        gap = opens[-1] - closes[-2] if len(closes) >= 2 else 0
+
+        return {"atr": atr, "gap": gap}

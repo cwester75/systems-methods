@@ -24,11 +24,12 @@ SHORT
     if weekday average return < -threshold
 """
 
-import pandas as pd
 import numpy as np
 
+from kaufman_systems.base import TradingSystem
 
-class WeekdayPatternSystem:
+
+class WeekdayPatternSystem(TradingSystem):
 
     def __init__(
         self,
@@ -46,46 +47,52 @@ class WeekdayPatternSystem:
         risk_per_trade : float
             portfolio risk fraction
         """
-
         self.lookback = lookback
         self.threshold = threshold
         self.risk_per_trade = risk_per_trade
-
 
     # ---------------------------------------------------------
     # Calculate weekday return profile
     # ---------------------------------------------------------
 
-    def weekday_returns(self, df: pd.DataFrame):
+    def _weekday_returns(self, closes, weekdays):
+        """Compute mean return per weekday over the lookback window."""
+        closes = np.asarray(closes, dtype=float)
+        weekdays = np.asarray(weekdays, dtype=int)
 
-        data = df.copy()
+        returns = np.diff(closes) / closes[:-1]
+        wdays = weekdays[1:]
 
-        data["returns"] = data["close"].pct_change()
-        data["weekday"] = data.index.weekday
+        n = min(self.lookback, len(returns))
+        returns = returns[-n:]
+        wdays = wdays[-n:]
 
-        sample = data.tail(self.lookback)
-
-        weekday_mean = sample.groupby("weekday")["returns"].mean()
-
-        return weekday_mean
-
+        means = {}
+        for d in range(5):
+            mask = wdays == d
+            if np.any(mask):
+                means[d] = float(np.mean(returns[mask]))
+            else:
+                means[d] = 0.0
+        return means
 
     # ---------------------------------------------------------
     # Signal generation
     # ---------------------------------------------------------
 
-    def signal(self, df: pd.DataFrame) -> int:
+    def signal(self, data: dict) -> int:
         """
+        ``data`` must include ``closes``, ``weekdays`` (array of int 0-4),
+        and ``weekday`` (int, current day).
+
         Returns
         -------
         1  -> long
         -1 -> short
         0  -> neutral
         """
-
-        weekday_profile = self.weekday_returns(df)
-
-        today = df.index[-1].weekday()
+        weekday_profile = self._weekday_returns(data["closes"], data["weekdays"])
+        today = data["weekday"]
 
         expected_return = weekday_profile.get(today, 0)
 
@@ -97,37 +104,44 @@ class WeekdayPatternSystem:
 
         return 0
 
-
     # ---------------------------------------------------------
     # Position sizing
     # ---------------------------------------------------------
 
-    def position_sizing(
-        self,
-        capital: float,
-        volatility: float
-    ) -> float:
+    def position_sizing(self, data: dict, risk: dict) -> float:
+        closes = np.asarray(data["closes"], dtype=float)
+        equity = risk["equity"]
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
 
-        risk_dollars = capital * self.risk_per_trade
+        if len(closes) < 2:
+            return 0
+
+        returns = np.diff(closes) / closes[:-1]
+        volatility = np.std(returns[-20:]) * closes[-1] if len(returns) >= 20 else 0
 
         if volatility == 0:
             return 0
 
-        position = risk_dollars / volatility
-
-        return position
-
+        return equity * risk_per_trade / volatility
 
     # ---------------------------------------------------------
     # Risk filter
     # ---------------------------------------------------------
 
-    def risk_filter(self, df: pd.DataFrame) -> bool:
-        """
-        Liquidity filter
-        """
+    def risk_filter(self, data: dict) -> bool:
+        """Liquidity filter."""
+        volumes = np.asarray(data["volumes"], dtype=float)
 
-        volume = df["volume"].iloc[-1]
-        avg_volume = df["volume"].rolling(20).mean().iloc[-1]
+        if len(volumes) < 20:
+            return False
 
-        return volume > avg_volume
+        avg_volume = np.mean(volumes[-20:])
+        return float(volumes[-1]) > avg_volume
+
+    # ---------------------------------------------------------
+    # Indicators
+    # ---------------------------------------------------------
+
+    def indicators(self, data: dict) -> dict:
+        profile = self._weekday_returns(data["closes"], data["weekdays"])
+        return {"weekday_returns": profile}

@@ -30,11 +30,12 @@ SHORT
     expected seasonal return < -threshold
 """
 
-import pandas as pd
 import numpy as np
 
+from kaufman_systems.base import TradingSystem
 
-class SeasonalPatternSystem:
+
+class SeasonalPatternSystem(TradingSystem):
 
     def __init__(
         self,
@@ -52,48 +53,48 @@ class SeasonalPatternSystem:
         risk_per_trade : float
             portfolio risk fraction
         """
-
         self.lookback_years = lookback_years
         self.threshold = threshold
         self.risk_per_trade = risk_per_trade
-
 
     # ---------------------------------------------------------
     # Seasonal return profile
     # ---------------------------------------------------------
 
-    def seasonal_returns(self, df: pd.DataFrame):
+    def _seasonal_returns(self, closes, day_of_years):
+        """Compute mean return per day-of-year."""
+        closes = np.asarray(closes, dtype=float)
+        day_of_years = np.asarray(day_of_years, dtype=int)
 
-        data = df.copy()
+        returns = np.diff(closes) / closes[:-1]
+        doys = day_of_years[1:]
 
-        data["returns"] = data["close"].pct_change()
-        data["day_of_year"] = data.index.dayofyear
-
-        # restrict to last N years
-        cutoff = data.index.max() - pd.DateOffset(years=self.lookback_years)
-        data = data[data.index >= cutoff]
-
-        seasonal_mean = data.groupby("day_of_year")["returns"].mean()
-
-        return seasonal_mean
-
+        means = {}
+        for d in np.unique(doys):
+            mask = doys == d
+            if np.any(mask):
+                means[int(d)] = float(np.mean(returns[mask]))
+        return means
 
     # ---------------------------------------------------------
     # Signal generation
     # ---------------------------------------------------------
 
-    def signal(self, df: pd.DataFrame) -> int:
+    def signal(self, data: dict) -> int:
         """
+        ``data`` must include ``closes``, ``day_of_years``
+        (array of int 1–366), and ``day_of_year`` (int, current day).
+
         Returns
         -------
         1  -> long
         -1 -> short
         0  -> neutral
         """
-
-        seasonal_profile = self.seasonal_returns(df)
-
-        today = df.index[-1].dayofyear
+        seasonal_profile = self._seasonal_returns(
+            data["closes"], data["day_of_years"]
+        )
+        today = data["day_of_year"]
 
         expected_return = seasonal_profile.get(today, 0)
 
@@ -105,37 +106,48 @@ class SeasonalPatternSystem:
 
         return 0
 
-
     # ---------------------------------------------------------
     # Position sizing
     # ---------------------------------------------------------
 
-    def position_sizing(
-        self,
-        capital: float,
-        volatility: float
-    ) -> float:
+    def position_sizing(self, data: dict, risk: dict) -> float:
+        closes = np.asarray(data["closes"], dtype=float)
+        equity = risk["equity"]
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
 
-        risk_dollars = capital * self.risk_per_trade
+        if len(closes) < 2:
+            return 0
+
+        returns = np.diff(closes) / closes[:-1]
+        volatility = np.std(returns[-20:]) * closes[-1] if len(returns) >= 20 else 0
 
         if volatility == 0:
             return 0
 
-        position = risk_dollars / volatility
-
-        return position
-
+        return equity * risk_per_trade / volatility
 
     # ---------------------------------------------------------
     # Risk filter
     # ---------------------------------------------------------
 
-    def risk_filter(self, df: pd.DataFrame) -> bool:
-        """
-        Liquidity filter
-        """
+    def risk_filter(self, data: dict) -> bool:
+        """Liquidity filter."""
+        volumes = np.asarray(data["volumes"], dtype=float)
 
-        volume = df["volume"].iloc[-1]
-        avg_volume = df["volume"].rolling(20).mean().iloc[-1]
+        if len(volumes) < 20:
+            return False
 
-        return volume > avg_volume
+        avg_volume = np.mean(volumes[-20:])
+        return float(volumes[-1]) > avg_volume
+
+    # ---------------------------------------------------------
+    # Indicators
+    # ---------------------------------------------------------
+
+    def indicators(self, data: dict) -> dict:
+        profile = self._seasonal_returns(data["closes"], data["day_of_years"])
+        today = data["day_of_year"]
+        return {
+            "seasonal_returns": profile,
+            "expected_return_today": profile.get(today, 0),
+        }

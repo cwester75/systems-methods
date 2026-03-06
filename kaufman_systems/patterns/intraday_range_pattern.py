@@ -19,11 +19,12 @@ Exit
     end of session or risk stop
 """
 
-import pandas as pd
 import numpy as np
 
+from kaufman_systems.base import TradingSystem
 
-class IntradayRangePatternSystem:
+
+class IntradayRangePatternSystem(TradingSystem):
 
     def __init__(
         self,
@@ -38,47 +39,28 @@ class IntradayRangePatternSystem:
         risk_per_trade : float
             portfolio risk fraction
         """
-
         self.range_minutes = range_minutes
         self.risk_per_trade = risk_per_trade
-
-
-    # ---------------------------------------------------------
-    # Opening range calculation
-    # ---------------------------------------------------------
-
-    def opening_range(self, df: pd.DataFrame):
-
-        session_start = df.index[0]
-
-        range_end = session_start + pd.Timedelta(
-            minutes=self.range_minutes
-        )
-
-        range_data = df[df.index <= range_end]
-
-        range_high = range_data["high"].max()
-        range_low = range_data["low"].min()
-
-        return range_high, range_low
-
 
     # ---------------------------------------------------------
     # Signal generation
     # ---------------------------------------------------------
 
-    def signal(self, df: pd.DataFrame) -> int:
+    def signal(self, data: dict) -> int:
         """
+        ``data`` must include ``closes`` and ``opening_range``
+        (a tuple/list of ``(range_high, range_low)``).
+
         Returns
         -------
         1  -> long breakout
         -1 -> short breakout
         0  -> no signal
         """
+        closes = np.asarray(data["closes"], dtype=float)
+        range_high, range_low = data["opening_range"]
 
-        range_high, range_low = self.opening_range(df)
-
-        price = df["close"].iloc[-1]
+        price = closes[-1]
 
         if price > range_high:
             return 1
@@ -88,34 +70,46 @@ class IntradayRangePatternSystem:
 
         return 0
 
-
     # ---------------------------------------------------------
     # Position sizing
     # ---------------------------------------------------------
 
-    def position_sizing(
-        self,
-        capital: float,
-        volatility: float
-    ) -> float:
+    def position_sizing(self, data: dict, risk: dict) -> float:
+        closes = np.asarray(data["closes"], dtype=float)
+        equity = risk["equity"]
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
 
-        risk_dollars = capital * self.risk_per_trade
+        if len(closes) < 2:
+            return 0
+
+        returns = np.diff(closes) / closes[:-1]
+        volatility = np.std(returns[-20:]) * closes[-1] if len(returns) >= 20 else 0
 
         if volatility == 0:
             return 0
 
-        position = risk_dollars / volatility
-
-        return position
-
+        return equity * risk_per_trade / volatility
 
     # ---------------------------------------------------------
     # Risk filter
     # ---------------------------------------------------------
 
-    def risk_filter(self, df: pd.DataFrame) -> bool:
+    def risk_filter(self, data: dict) -> bool:
+        volumes = np.asarray(data["volumes"], dtype=float)
 
-        volume = df["volume"].iloc[-1]
-        avg_volume = df["volume"].rolling(20).mean().iloc[-1]
+        if len(volumes) < 20:
+            return False
 
-        return volume > avg_volume
+        avg_volume = np.mean(volumes[-20:])
+        return float(volumes[-1]) > avg_volume
+
+    # ---------------------------------------------------------
+    # Indicators
+    # ---------------------------------------------------------
+
+    def indicators(self, data: dict) -> dict:
+        range_high, range_low = data["opening_range"]
+        return {
+            "range_high": range_high,
+            "range_low": range_low,
+        }

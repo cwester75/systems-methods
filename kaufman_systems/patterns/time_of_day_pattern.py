@@ -18,14 +18,15 @@ and optionally exits during the closing session.
 
 Data Requirement
 ----------------
-Intraday bars with a DateTime index.
+Intraday bars with opening-range high/low passed in data dict.
 """
 
-import pandas as pd
 import numpy as np
 
+from kaufman_systems.base import TradingSystem
 
-class TimeOfDayPatternSystem:
+
+class TimeOfDayPatternSystem(TradingSystem):
 
     def __init__(
         self,
@@ -43,85 +44,78 @@ class TimeOfDayPatternSystem:
         risk_per_trade : float
             portfolio risk per trade
         """
-
         self.open_window_minutes = open_window_minutes
         self.close_window_minutes = close_window_minutes
         self.risk_per_trade = risk_per_trade
-
-
-    # ---------------------------------------------------------
-    # Opening range calculation
-    # ---------------------------------------------------------
-
-    def opening_range(self, df: pd.DataFrame):
-
-        session_start = df.index[0]
-
-        window_end = session_start + pd.Timedelta(
-            minutes=self.open_window_minutes
-        )
-
-        opening_data = df[df.index <= window_end]
-
-        high = opening_data["high"].max()
-        low = opening_data["low"].min()
-
-        return high, low
-
 
     # ---------------------------------------------------------
     # Signal generation
     # ---------------------------------------------------------
 
-    def signal(self, df: pd.DataFrame) -> int:
+    def signal(self, data: dict) -> int:
         """
+        ``data`` must include ``closes`` and ``opening_range``
+        (a tuple/list of ``(range_high, range_low)``).
+
         Returns
         -------
         1  -> long breakout
         -1 -> short breakout
         0  -> no signal
         """
+        closes = np.asarray(data["closes"], dtype=float)
+        range_high, range_low = data["opening_range"]
 
-        high, low = self.opening_range(df)
+        price = closes[-1]
 
-        price = df["close"].iloc[-1]
-
-        if price > high:
+        if price > range_high:
             return 1
 
-        if price < low:
+        if price < range_low:
             return -1
 
         return 0
-
 
     # ---------------------------------------------------------
     # Position sizing
     # ---------------------------------------------------------
 
-    def position_sizing(
-        self,
-        capital: float,
-        volatility: float
-    ) -> float:
+    def position_sizing(self, data: dict, risk: dict) -> float:
+        closes = np.asarray(data["closes"], dtype=float)
+        equity = risk["equity"]
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
 
-        risk_dollars = capital * self.risk_per_trade
+        if len(closes) < 2:
+            return 0
+
+        returns = np.diff(closes) / closes[:-1]
+        volatility = np.std(returns[-20:]) * closes[-1] if len(returns) >= 20 else 0
 
         if volatility == 0:
             return 0
 
-        position = risk_dollars / volatility
-
-        return position
-
+        return equity * risk_per_trade / volatility
 
     # ---------------------------------------------------------
     # Risk filter
     # ---------------------------------------------------------
 
-    def risk_filter(self, df: pd.DataFrame) -> bool:
+    def risk_filter(self, data: dict) -> bool:
+        volumes = np.asarray(data["volumes"], dtype=float)
 
-        volume = df["volume"].iloc[-1]
-        avg_volume = df["volume"].rolling(20).mean().iloc[-1]
+        if len(volumes) < 20:
+            return False
 
-        return volume > avg_volume
+        avg_volume = np.mean(volumes[-20:])
+        return float(volumes[-1]) > avg_volume
+
+    # ---------------------------------------------------------
+    # Indicators
+    # ---------------------------------------------------------
+
+    def indicators(self, data: dict) -> dict:
+        range_high, range_low = data["opening_range"]
+        return {
+            "opening_range_high": range_high,
+            "opening_range_low": range_low,
+        }
