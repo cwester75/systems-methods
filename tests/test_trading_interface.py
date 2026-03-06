@@ -16,6 +16,7 @@ from kaufman_systems.base import TradingSystem
 from kaufman_systems.trend.er_trend_system import ERTrendSystem
 from kaufman_systems.trend.linear_regression_trend import LinearRegressionTrendSystem
 from kaufman_systems.moving_average.dual_ma_system import DualMASystem
+from kaufman_systems.moving_average.triple_ma_system import TripleMASystem
 from kaufman_systems.moving_average.kama_system import KAMASystem
 from kaufman_systems.breakout.atr_breakout_system import ATRBreakoutSystem
 from kaufman_systems.breakout.donchian_breakout_system import DonchianBreakoutSystem
@@ -23,6 +24,26 @@ from kaufman_systems.momentum.dual_roc_system import DualROCSystem
 from kaufman_systems.momentum.rsi_reversal_system import RSIReversalSystem
 from kaufman_systems.adaptive.kaufman_adaptive_system import KaufmanAdaptiveSystem
 from kaufman_systems.volatility.bollinger_breakout_system import BollingerBreakoutSystem
+from kaufman_systems.channel.price_channel_breakout import PriceChannelBreakoutSystem
+from kaufman_systems.channel.moving_channel_system import MovingChannelSystem
+from kaufman_systems.channel.regression_channel_system import RegressionChannelSystem
+from kaufman_systems.channel.high_low_channel_system import HighLowChannelSystem
+from kaufman_systems.swing.swing_reversal_system import SwingReversalSystem
+from kaufman_systems.swing.outside_day_system import OutsideDaySystem
+from kaufman_systems.swing.thrust_system import ThrustSystem
+from kaufman_systems.pattern.congestion_breakout_system import CongestionBreakoutSystem
+from kaufman_systems.pattern.range_expansion_system import RangeExpansionSystem
+from kaufman_systems.pattern.inside_day_breakout import InsideDayBreakoutSystem
+from kaufman_systems.volatility_contraction.bollinger_squeeze_system import BollingerSqueezeSystem
+from kaufman_systems.volatility_contraction.keltner_squeeze_system import KeltnerSqueezeSystem
+from kaufman_systems.volatility_contraction.atr_contraction_system import ATRContractionSystem
+from kaufman_systems.volatility_contraction.volatility_ratio_system import VolatilityRatioSystem
+from kaufman_systems.volatility_contraction.standard_deviation_breakout import StandardDeviationBreakoutSystem
+from kaufman_systems.range_expansion.narrow_range_breakout import NarrowRangeBreakoutSystem
+from kaufman_systems.range_expansion.opening_range_breakout import OpeningRangeBreakoutSystem
+from kaufman_systems.range_expansion.volatility_expansion_breakout import VolatilityExpansionBreakoutSystem
+from kaufman_systems.range_expansion.vix_expansion_system import VIXExpansionSystem
+from kaufman_systems.range_expansion.range_percentile_system import RangePercentileSystem
 
 
 # -------------------------------------------------------------------
@@ -41,6 +62,7 @@ ALL_SYSTEMS = [
     ERTrendSystem(),
     LinearRegressionTrendSystem(),
     DualMASystem(),
+    TripleMASystem(),
     KAMASystem(),
     ATRBreakoutSystem(),
     DonchianBreakoutSystem(),
@@ -48,6 +70,26 @@ ALL_SYSTEMS = [
     RSIReversalSystem(),
     KaufmanAdaptiveSystem(),
     BollingerBreakoutSystem(),
+    PriceChannelBreakoutSystem(),
+    MovingChannelSystem(),
+    RegressionChannelSystem(),
+    HighLowChannelSystem(),
+    SwingReversalSystem(),
+    OutsideDaySystem(),
+    ThrustSystem(),
+    CongestionBreakoutSystem(),
+    RangeExpansionSystem(),
+    InsideDayBreakoutSystem(),
+    BollingerSqueezeSystem(),
+    KeltnerSqueezeSystem(),
+    ATRContractionSystem(),
+    VolatilityRatioSystem(),
+    StandardDeviationBreakoutSystem(),
+    NarrowRangeBreakoutSystem(),
+    OpeningRangeBreakoutSystem(),
+    VolatilityExpansionBreakoutSystem(),
+    VIXExpansionSystem(),
+    RangePercentileSystem(),
 ]
 
 
