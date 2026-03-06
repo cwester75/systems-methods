@@ -20,8 +20,10 @@ ATR-based risk normalization to standardize position exposure.
 
 import numpy as np
 
+from kaufman_systems.base import TradingSystem
 
-class RSIReversalSystem:
+
+class RSIReversalSystem(TradingSystem):
 
     def __init__(
         self,
@@ -90,7 +92,7 @@ class RSIReversalSystem:
     # Core system interface
     # ---------------------------------------------------------
 
-    def signal(self, closes):
+    def signal(self, data):
         """
         Returns
         -------
@@ -99,6 +101,7 @@ class RSIReversalSystem:
         0  → Flat
         """
 
+        closes = data["closes"]
         rsi_val = self.rsi(closes)
 
         if rsi_val is None:
@@ -112,25 +115,35 @@ class RSIReversalSystem:
 
         return 0
 
-    def position_sizing(self, equity, highs, lows, closes):
+    def position_sizing(self, data, risk):
         """
         ATR-based position sizing
         """
+
+        highs = data["highs"]
+        lows = data["lows"]
+        closes = data["closes"]
+        equity = risk["equity"]
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
 
         atr = self.atr(highs, lows, closes)
 
         if atr is None or atr == 0:
             return 0
 
-        risk_amount = equity * self.risk_per_trade
+        risk_amount = equity * risk_per_trade
         position = risk_amount / atr
 
         return position
 
-    def risk_filter(self, highs, lows, closes):
+    def risk_filter(self, data):
         """
         Basic volatility sanity check
         """
+
+        highs = data["highs"]
+        lows = data["lows"]
+        closes = data["closes"]
 
         atr = self.atr(highs, lows, closes)
 
@@ -146,7 +159,9 @@ class RSIReversalSystem:
     # Diagnostics
     # ---------------------------------------------------------
 
-    def indicators(self, closes):
+    def indicators(self, data):
+
+        closes = data["closes"]
 
         return {
             "rsi": self.rsi(closes)

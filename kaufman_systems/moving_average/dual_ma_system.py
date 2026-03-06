@@ -20,8 +20,10 @@ trend-following system in the Kaufman research library.
 
 import numpy as np
 
+from kaufman_systems.base import TradingSystem
 
-class DualMASystem:
+
+class DualMASystem(TradingSystem):
 
     def __init__(
         self,
@@ -72,7 +74,7 @@ class DualMASystem:
     # Core system interface
     # ---------------------------------------------------------
 
-    def signal(self, closes):
+    def signal(self, data):
         """
         Returns
         -------
@@ -81,6 +83,7 @@ class DualMASystem:
         0  → Flat
         """
 
+        closes = data["closes"]
         fast_ma = self.sma(closes, self.fast_period)
         slow_ma = self.sma(closes, self.slow_period)
 
@@ -95,25 +98,35 @@ class DualMASystem:
 
         return 0
 
-    def position_sizing(self, equity, highs, lows, closes):
+    def position_sizing(self, data, risk):
         """
         ATR-normalized position sizing.
         """
+
+        highs = data["highs"]
+        lows = data["lows"]
+        closes = data["closes"]
+        equity = risk["equity"]
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
 
         atr = self.atr(highs, lows, closes)
 
         if atr is None or atr == 0:
             return 0
 
-        risk_amount = equity * self.risk_per_trade
+        risk_amount = equity * risk_per_trade
         position = risk_amount / atr
 
         return position
 
-    def risk_filter(self, highs, lows, closes):
+    def risk_filter(self, data):
         """
         Basic volatility sanity check.
         """
+
+        highs = data["highs"]
+        lows = data["lows"]
+        closes = data["closes"]
 
         atr = self.atr(highs, lows, closes)
 
@@ -129,7 +142,10 @@ class DualMASystem:
     # Diagnostics
     # ---------------------------------------------------------
 
-    def indicators(self, closes):
+    def indicators(self, data):
+
+        closes = data["closes"]
+
         return {
             "fast_ma": self.sma(closes, self.fast_period),
             "slow_ma": self.sma(closes, self.slow_period),
