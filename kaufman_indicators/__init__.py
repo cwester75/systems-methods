@@ -53,6 +53,21 @@ from kaufman_indicators.registry_meta import (
     validate_meta,
 )
 
+from kaufman_indicators.streaming import (
+    Indicator,
+    StreamingSMA,
+    StreamingEMA,
+    StreamingKAMA,
+    StreamingROC,
+    StreamingMomentum,
+    StreamingRSI,
+    StreamingMACD,
+    StreamingATR,
+    StreamingBollingerBands,
+    STREAMING_INDICATORS,
+    create_streaming,
+)
+
 __all__ = [
     # trend
     "efficiency_ratio",
@@ -94,4 +109,17 @@ __all__ = [
     "required_params",
     "output_fields",
     "validate_meta",
+    # streaming
+    "Indicator",
+    "StreamingSMA",
+    "StreamingEMA",
+    "StreamingKAMA",
+    "StreamingROC",
+    "StreamingMomentum",
+    "StreamingRSI",
+    "StreamingMACD",
+    "StreamingATR",
+    "StreamingBollingerBands",
+    "STREAMING_INDICATORS",
+    "create_streaming",
 ]
