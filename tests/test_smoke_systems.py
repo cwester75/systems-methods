@@ -31,6 +31,16 @@ from kaufman_systems.swing.thrust_system import ThrustSystem
 from kaufman_systems.pattern.congestion_breakout_system import CongestionBreakoutSystem
 from kaufman_systems.pattern.range_expansion_system import RangeExpansionSystem
 from kaufman_systems.pattern.inside_day_breakout import InsideDayBreakoutSystem
+from kaufman_systems.volatility_contraction.bollinger_squeeze_system import BollingerSqueezeSystem
+from kaufman_systems.volatility_contraction.keltner_squeeze_system import KeltnerSqueezeSystem
+from kaufman_systems.volatility_contraction.atr_contraction_system import ATRContractionSystem
+from kaufman_systems.volatility_contraction.volatility_ratio_system import VolatilityRatioSystem
+from kaufman_systems.volatility_contraction.standard_deviation_breakout import StandardDeviationBreakoutSystem
+from kaufman_systems.range_expansion.narrow_range_breakout import NarrowRangeBreakoutSystem
+from kaufman_systems.range_expansion.opening_range_breakout import OpeningRangeBreakoutSystem
+from kaufman_systems.range_expansion.volatility_expansion_breakout import VolatilityExpansionBreakoutSystem
+from kaufman_systems.range_expansion.vix_expansion_system import VIXExpansionSystem
+from kaufman_systems.range_expansion.range_percentile_system import RangePercentileSystem
 
 
 # ===================================================================
@@ -939,6 +949,381 @@ class TestInsideDayBreakoutSystem:
 
 
 # ===================================================================
+# 21. BollingerSqueezeSystem
+# ===================================================================
+
+class TestBollingerSqueezeSystem:
+
+    def setup_method(self):
+        self.sys = BollingerSqueezeSystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_long_on_squeeze_breakout_up(self):
+        # Tight range (squeeze from prior bars) then spike above upper band
+        closes = np.full(100, 100.0)
+        closes[-1] = 120.0
+        data = _make_data(closes)
+        assert self.sys.signal(data) == 1
+
+    def test_short_on_squeeze_breakout_down(self):
+        closes = np.full(100, 100.0)
+        closes[-1] = 80.0
+        data = _make_data(closes)
+        assert self.sys.signal(data) == -1
+
+    def test_flat_no_squeeze(self):
+        # Wide bandwidth → no squeeze
+        assert self.sys.signal(DATA_UP) == 0
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "bandwidth" in ind
+        assert "is_squeeze" in ind
+        assert "upper_band" in ind
+        assert "lower_band" in ind
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+
+
+# ===================================================================
+# 22. KeltnerSqueezeSystem
+# ===================================================================
+
+class TestKeltnerSqueezeSystem:
+
+    def setup_method(self):
+        self.sys = KeltnerSqueezeSystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_signal_valid(self):
+        sig = self.sys.signal(DATA_UP)
+        assert sig in (-1, 0, 1)
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "bb_upper" in ind
+        assert "bb_lower" in ind
+        assert "kc_upper" in ind
+        assert "kc_lower" in ind
+        assert "is_squeeze" in ind
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+
+
+# ===================================================================
+# 23. ATRContractionSystem
+# ===================================================================
+
+class TestATRContractionSystem:
+
+    def setup_method(self):
+        self.sys = ATRContractionSystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_signal_valid(self):
+        sig = self.sys.signal(DATA_UP)
+        assert sig in (-1, 0, 1)
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "current_atr" in ind
+        assert "avg_atr" in ind
+        assert "is_contraction" in ind
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+
+
+# ===================================================================
+# 24. VolatilityRatioSystem
+# ===================================================================
+
+class TestVolatilityRatioSystem:
+
+    def setup_method(self):
+        self.sys = VolatilityRatioSystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_long_on_large_expansion_up(self):
+        # Flat range then huge expansion bar closing up
+        closes = np.full(100, 100.0)
+        highs = np.full(100, 101.0)
+        lows = np.full(100, 99.0)
+        # Big expansion bar
+        highs[-1] = 115.0
+        lows[-1] = 95.0
+        closes[-1] = 112.0
+        closes[-2] = 100.0
+        data = {"closes": closes, "highs": highs, "lows": lows}
+        assert self.sys.signal(data) == 1
+
+    def test_short_on_large_expansion_down(self):
+        closes = np.full(100, 100.0)
+        highs = np.full(100, 101.0)
+        lows = np.full(100, 99.0)
+        highs[-1] = 105.0
+        lows[-1] = 85.0
+        closes[-1] = 88.0
+        closes[-2] = 100.0
+        data = {"closes": closes, "highs": highs, "lows": lows}
+        assert self.sys.signal(data) == -1
+
+    def test_flat_on_normal_range(self):
+        assert self.sys.signal(DATA_FLAT) == 0
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "true_range" in ind
+        assert "atr" in ind
+        assert "volatility_ratio" in ind
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+
+
+# ===================================================================
+# 25. StandardDeviationBreakoutSystem
+# ===================================================================
+
+class TestStandardDeviationBreakoutSystem:
+
+    def setup_method(self):
+        self.sys = StandardDeviationBreakoutSystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_long_on_spike_above(self):
+        closes = np.full(100, 100.0)
+        closes[-1] = 120.0
+        data = _make_data(closes)
+        assert self.sys.signal(data) == 1
+
+    def test_short_on_spike_below(self):
+        closes = np.full(100, 100.0)
+        closes[-1] = 80.0
+        data = _make_data(closes)
+        assert self.sys.signal(data) == -1
+
+    def test_flat_on_sideways(self):
+        assert self.sys.signal(DATA_FLAT) == 0
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "zscore" in ind
+        assert "threshold" in ind
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+
+
+# ===================================================================
+# 26. NarrowRangeBreakoutSystem
+# ===================================================================
+
+class TestNarrowRangeBreakoutSystem:
+
+    def setup_method(self):
+        self.sys = NarrowRangeBreakoutSystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_long_on_nr_breakout_up(self):
+        # Wide range bars, then one narrow bar, then breakout above
+        highs = np.full(100, 110.0)
+        lows = np.full(100, 90.0)
+        closes = np.full(100, 100.0)
+        # Narrow range bar at [-2]
+        highs[-2] = 100.2
+        lows[-2] = 99.8
+        # Breakout bar
+        closes[-1] = 105.0
+        highs[-1] = 106.0
+        data = {"closes": closes, "highs": highs, "lows": lows}
+        assert self.sys.signal(data) == 1
+
+    def test_short_on_nr_breakout_down(self):
+        highs = np.full(100, 110.0)
+        lows = np.full(100, 90.0)
+        closes = np.full(100, 100.0)
+        highs[-2] = 100.2
+        lows[-2] = 99.8
+        closes[-1] = 95.0
+        lows[-1] = 94.0
+        data = {"closes": closes, "highs": highs, "lows": lows}
+        assert self.sys.signal(data) == -1
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "is_narrow_range" in ind
+        assert "nr_high" in ind
+        assert "nr_low" in ind
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+
+
+# ===================================================================
+# 27. OpeningRangeBreakoutSystem
+# ===================================================================
+
+class TestOpeningRangeBreakoutSystem:
+
+    def setup_method(self):
+        self.sys = OpeningRangeBreakoutSystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_long_on_uptrend(self):
+        assert self.sys.signal(DATA_UP) == 1
+
+    def test_short_on_downtrend(self):
+        assert self.sys.signal(DATA_DOWN) == -1
+
+    def test_flat_on_sideways(self):
+        assert self.sys.signal(DATA_FLAT) == 0
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "or_high" in ind
+        assert "or_low" in ind
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+
+
+# ===================================================================
+# 28. VolatilityExpansionBreakoutSystem
+# ===================================================================
+
+class TestVolatilityExpansionBreakoutSystem:
+
+    def setup_method(self):
+        self.sys = VolatilityExpansionBreakoutSystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_long_on_expansion_close_near_high(self):
+        closes = np.full(100, 100.0)
+        highs = np.full(100, 101.0)
+        lows = np.full(100, 99.0)
+        # Big expansion, close near high
+        highs[-1] = 115.0
+        lows[-1] = 95.0
+        closes[-1] = 114.0  # near high
+        data = {"closes": closes, "highs": highs, "lows": lows}
+        assert self.sys.signal(data) == 1
+
+    def test_short_on_expansion_close_near_low(self):
+        closes = np.full(100, 100.0)
+        highs = np.full(100, 101.0)
+        lows = np.full(100, 99.0)
+        highs[-1] = 105.0
+        lows[-1] = 85.0
+        closes[-1] = 86.0  # near low
+        data = {"closes": closes, "highs": highs, "lows": lows}
+        assert self.sys.signal(data) == -1
+
+    def test_flat_on_normal_range(self):
+        assert self.sys.signal(DATA_FLAT) == 0
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "current_range" in ind
+        assert "avg_range" in ind
+        assert "expansion_ratio" in ind
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+
+
+# ===================================================================
+# 29. VIXExpansionSystem
+# ===================================================================
+
+class TestVIXExpansionSystem:
+
+    def setup_method(self):
+        self.sys = VIXExpansionSystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_signal_valid(self):
+        sig = self.sys.signal(DATA_UP)
+        assert sig in (-1, 0, 1)
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "current_vol" in ind
+        assert "avg_vol" in ind
+        assert "is_expansion" in ind
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+
+
+# ===================================================================
+# 30. RangePercentileSystem
+# ===================================================================
+
+class TestRangePercentileSystem:
+
+    def setup_method(self):
+        self.sys = RangePercentileSystem()
+
+    def test_inherits_base(self):
+        assert isinstance(self.sys, TradingSystem)
+
+    def test_long_on_high_percentile_up(self):
+        # Small range bars then huge bar closing up
+        closes = np.full(100, 100.0)
+        highs = np.full(100, 100.5)
+        lows = np.full(100, 99.5)
+        highs[-1] = 115.0
+        lows[-1] = 90.0
+        closes[-1] = 110.0
+        closes[-2] = 100.0
+        data = {"closes": closes, "highs": highs, "lows": lows}
+        assert self.sys.signal(data) == 1
+
+    def test_short_on_high_percentile_down(self):
+        closes = np.full(100, 100.0)
+        highs = np.full(100, 100.5)
+        lows = np.full(100, 99.5)
+        highs[-1] = 110.0
+        lows[-1] = 85.0
+        closes[-1] = 90.0
+        closes[-2] = 100.0
+        data = {"closes": closes, "highs": highs, "lows": lows}
+        assert self.sys.signal(data) == -1
+
+    def test_flat_on_normal_range(self):
+        assert self.sys.signal(DATA_FLAT) == 0
+
+    def test_indicators_keys(self):
+        ind = self.sys.indicators(DATA_UP)
+        assert "range_percentile" in ind
+        assert "upper_pct" in ind
+
+    def test_insufficient_data(self):
+        assert self.sys.signal(DATA_SHORT) == 0
+
+
+# ===================================================================
 # Cross-cutting: Position sizing math
 # ===================================================================
 
@@ -967,6 +1352,16 @@ class TestPositionSizingMath:
         CongestionBreakoutSystem(),
         RangeExpansionSystem(),
         InsideDayBreakoutSystem(),
+        BollingerSqueezeSystem(),
+        KeltnerSqueezeSystem(),
+        ATRContractionSystem(),
+        VolatilityRatioSystem(),
+        StandardDeviationBreakoutSystem(),
+        NarrowRangeBreakoutSystem(),
+        OpeningRangeBreakoutSystem(),
+        VolatilityExpansionBreakoutSystem(),
+        VIXExpansionSystem(),
+        RangePercentileSystem(),
     ]
 
     @pytest.mark.parametrize("sys", ALL, ids=lambda s: type(s).__name__)

@@ -34,6 +34,16 @@ from kaufman_systems.swing.thrust_system import ThrustSystem
 from kaufman_systems.pattern.congestion_breakout_system import CongestionBreakoutSystem
 from kaufman_systems.pattern.range_expansion_system import RangeExpansionSystem
 from kaufman_systems.pattern.inside_day_breakout import InsideDayBreakoutSystem
+from kaufman_systems.volatility_contraction.bollinger_squeeze_system import BollingerSqueezeSystem
+from kaufman_systems.volatility_contraction.keltner_squeeze_system import KeltnerSqueezeSystem
+from kaufman_systems.volatility_contraction.atr_contraction_system import ATRContractionSystem
+from kaufman_systems.volatility_contraction.volatility_ratio_system import VolatilityRatioSystem
+from kaufman_systems.volatility_contraction.standard_deviation_breakout import StandardDeviationBreakoutSystem
+from kaufman_systems.range_expansion.narrow_range_breakout import NarrowRangeBreakoutSystem
+from kaufman_systems.range_expansion.opening_range_breakout import OpeningRangeBreakoutSystem
+from kaufman_systems.range_expansion.volatility_expansion_breakout import VolatilityExpansionBreakoutSystem
+from kaufman_systems.range_expansion.vix_expansion_system import VIXExpansionSystem
+from kaufman_systems.range_expansion.range_percentile_system import RangePercentileSystem
 
 
 # -------------------------------------------------------------------
@@ -70,6 +80,16 @@ ALL_SYSTEMS = [
     CongestionBreakoutSystem(),
     RangeExpansionSystem(),
     InsideDayBreakoutSystem(),
+    BollingerSqueezeSystem(),
+    KeltnerSqueezeSystem(),
+    ATRContractionSystem(),
+    VolatilityRatioSystem(),
+    StandardDeviationBreakoutSystem(),
+    NarrowRangeBreakoutSystem(),
+    OpeningRangeBreakoutSystem(),
+    VolatilityExpansionBreakoutSystem(),
+    VIXExpansionSystem(),
+    RangePercentileSystem(),
 ]
 
 
