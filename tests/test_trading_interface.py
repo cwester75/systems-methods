@@ -24,6 +24,16 @@ from kaufman_systems.momentum.dual_roc_system import DualROCSystem
 from kaufman_systems.momentum.rsi_reversal_system import RSIReversalSystem
 from kaufman_systems.adaptive.kaufman_adaptive_system import KaufmanAdaptiveSystem
 from kaufman_systems.volatility.bollinger_breakout_system import BollingerBreakoutSystem
+from kaufman_systems.channel.price_channel_breakout import PriceChannelBreakoutSystem
+from kaufman_systems.channel.moving_channel_system import MovingChannelSystem
+from kaufman_systems.channel.regression_channel_system import RegressionChannelSystem
+from kaufman_systems.channel.high_low_channel_system import HighLowChannelSystem
+from kaufman_systems.swing.swing_reversal_system import SwingReversalSystem
+from kaufman_systems.swing.outside_day_system import OutsideDaySystem
+from kaufman_systems.swing.thrust_system import ThrustSystem
+from kaufman_systems.pattern.congestion_breakout_system import CongestionBreakoutSystem
+from kaufman_systems.pattern.range_expansion_system import RangeExpansionSystem
+from kaufman_systems.pattern.inside_day_breakout import InsideDayBreakoutSystem
 
 
 # -------------------------------------------------------------------
@@ -50,6 +60,16 @@ ALL_SYSTEMS = [
     RSIReversalSystem(),
     KaufmanAdaptiveSystem(),
     BollingerBreakoutSystem(),
+    PriceChannelBreakoutSystem(),
+    MovingChannelSystem(),
+    RegressionChannelSystem(),
+    HighLowChannelSystem(),
+    SwingReversalSystem(),
+    OutsideDaySystem(),
+    ThrustSystem(),
+    CongestionBreakoutSystem(),
+    RangeExpansionSystem(),
+    InsideDayBreakoutSystem(),
 ]
 
 
