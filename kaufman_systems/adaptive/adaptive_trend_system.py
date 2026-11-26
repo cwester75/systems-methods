@@ -84,7 +84,16 @@ class AdaptiveTrendSystem(TradingSystem):
         closes = np.asarray(data["closes"])
         if len(closes) < self.atr_period + 1:
             return False
-        return True
+        highs = np.asarray(data["highs"])
+        lows = np.asarray(data["lows"])
+        tr = np.maximum(
+            highs[1:] - lows[1:],
+            np.maximum(
+                np.abs(highs[1:] - closes[:-1]),
+                np.abs(lows[1:] - closes[:-1]),
+            ),
+        )
+        return bool(np.mean(tr[-self.atr_period :]) > 0)
 
     def indicators(self, data):
         closes = data["closes"]

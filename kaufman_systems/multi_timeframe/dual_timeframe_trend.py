@@ -37,8 +37,8 @@ class DualTimeframeTrendSystem(TradingSystem):
         slow_ma = np.mean(closes[-self.slow_period :])
         fast_ma = np.mean(closes[-self.fast_period :])
 
-        trend = 1 if closes[-1] > slow_ma else -1
-        entry = 1 if closes[-1] > fast_ma else -1
+        trend = int(np.sign(closes[-1] - slow_ma))
+        entry = int(np.sign(closes[-1] - fast_ma))
 
         if trend > 0 and entry > 0:
             return 1
