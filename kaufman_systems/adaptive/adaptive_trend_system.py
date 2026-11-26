@@ -2,8 +2,11 @@
 Adaptive Trend System
 
 Adjusts moving average length based on volatility.
-High volatility → shorter lookback (faster adaptation)
-Low volatility → longer lookback (smoother trend)
+High volatility → longer lookback (smoother, filters noise)
+Low volatility → shorter lookback (faster, closer to base_period)
+
+The period is base_period * (1 + 100 * mean|price change| / price),
+clamped to [min_period, max_period].
 
 Corresponds to Kaufman Chapter 17 — Adaptive Techniques.
 """

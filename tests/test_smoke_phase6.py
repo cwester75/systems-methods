@@ -73,6 +73,11 @@ class TestAdaptiveTrendSystem:
         p = self.sys.adaptive_period(closes)
         assert self.sys.min_period <= p <= self.sys.max_period
 
+    def test_higher_volatility_lengthens_period(self):
+        calm = 100 + 0.1 * (np.arange(60) % 2)
+        wild = 100 + 3.0 * (np.arange(60) % 2)
+        assert self.sys.adaptive_period(wild) > self.sys.adaptive_period(calm)
+
     def test_indicators_keys(self):
         assert "adaptive_period" in self.sys.indicators(DATA_UP)
 
