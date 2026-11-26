@@ -1,4 +1,4 @@
-# Kaufman Systems — Master Implementation Plan (~70 Systems)
+# Kaufman Systems — Master Implementation Plan (75 Systems)
 
 Research-grade trading systems library based on Perry Kaufman's
 *Trading Systems and Methods*. Each system exposes a standard interface:
@@ -186,6 +186,9 @@ kaufman_systems/
     adaptive/
     multi_timeframe/
     advanced/
+
+    # Phase 7
+    optimization/
 ```
 
 ---
@@ -220,20 +223,21 @@ kaufman_systems/
 | Ch.18: Price distributions | Phase 6 (advanced/) |
 | Ch.19: Multiple time frames | Phase 6 (multi_timeframe/) |
 | Ch.20: Advanced techniques | Phase 6 (advanced/) |
+| Ch.21+: Optimization, AI, fuzzy/chaos | Phase 7 (optimization/) |
 
 ---
 
-## Potential Phase 7 — AI / Optimization / Advanced Models
+## Phase 7 — AI / Optimization / Advanced Models (5)
 
-Future expansion aligned with Kaufman's final chapters:
+Optimization and nonlinear techniques from Kaufman's final chapters.
+All numpy-only and deterministic (seeded RNG).
 
-```
-optimization/
-    genetic_algorithm_system.py
-    neural_network_predictor.py
-    fuzzy_logic_system.py
-    expert_system.py
-    fractal_chaos_system.py
-```
+| # | Directory | Module | System | Status |
+|---|-----------|--------|--------|--------|
+| 71 | optimization/ | genetic_algorithm_system.py | Genetic Algorithm (evolved MA crossover) | Done |
+| 72 | optimization/ | neural_network_predictor.py | Neural Network Predictor | Done |
+| 73 | optimization/ | fuzzy_logic_system.py | Fuzzy Logic | Done |
+| 74 | optimization/ | expert_system.py | Expert System (rule voting) | Done |
+| 75 | optimization/ | fractal_chaos_system.py | Fractal / Chaos (Hurst regime) | Done |
 
 Overlaps with existing fractal/nonlinear research in the UP architecture.
