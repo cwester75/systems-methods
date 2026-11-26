@@ -72,7 +72,8 @@ class AdaptiveMomentumSystem(TradingSystem):
         if vol == 0:
             return 0
 
-        return equity * self.risk_per_trade / (vol * closes[-1])
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
+        return equity * risk_per_trade / (vol * closes[-1])
 
     def risk_filter(self, data):
         closes = np.asarray(data["closes"])
@@ -82,7 +83,7 @@ class AdaptiveMomentumSystem(TradingSystem):
         returns = np.diff(closes[-(self.vol_period + 1) :]) / closes[-(self.vol_period + 1) : -1]
         vol = np.std(returns)
 
-        return vol > 0
+        return bool(vol > 0)
 
     def indicators(self, data):
         closes = data["closes"]

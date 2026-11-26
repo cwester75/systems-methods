@@ -1,21 +1,22 @@
 """
 Opening Gap Pattern System
---------------------------
 
 Concept
 -------
-Large overnight gaps often lead to continuation moves during the session.
+Large overnight gaps often lead to continuation moves.  Since we work
+with daily closes/highs/lows only, the gap is approximated as the
+distance between the current bar's low (gap up) or high (gap down)
+and the prior close.
 
-Rules
------
-LONG
-    gap_up > gap_threshold * ATR
+Signal logic
+------------
+If low[-1] > close[-2] + gap_threshold * ATR  -> LONG  (gap up)
+If high[-1] < close[-2] - gap_threshold * ATR -> SHORT (gap down)
+Otherwise                                     -> FLAT
 
-SHORT
-    gap_down > gap_threshold * ATR
-
-Exit
-    end-of-day or opposite signal
+Risk model
+----------
+ATR-based position sizing.
 """
 
 import numpy as np
@@ -27,36 +28,18 @@ class OpeningGapSystem(TradingSystem):
 
     def __init__(
         self,
-        gap_threshold: float = 1.5,
+        gap_threshold: float = 1.0,
         atr_period: int = 14,
-        risk_per_trade: float = 0.01
+        risk_per_trade: float = 0.01,
     ):
-        """
-        Parameters
-        ----------
-        gap_threshold : float
-            gap size relative to ATR required to trigger signal
-        atr_period : int
-            ATR lookback
-        risk_per_trade : float
-            portfolio risk per trade
-        """
         self.gap_threshold = gap_threshold
         self.atr_period = atr_period
         self.risk_per_trade = risk_per_trade
 
-    # ---------------------------------------------------------
-    # ATR Calculation
-    # ---------------------------------------------------------
-
-    def _atr(self, highs, lows, closes):
-        highs = np.asarray(highs, dtype=float)
-        lows = np.asarray(lows, dtype=float)
-        closes = np.asarray(closes, dtype=float)
-
+    def atr(self, highs, lows, closes):
+        highs, lows, closes = np.asarray(highs), np.asarray(lows), np.asarray(closes)
         if len(closes) < self.atr_period + 1:
             return None
-
         tr = np.maximum(
             highs[1:] - lows[1:],
             np.maximum(
@@ -64,88 +47,50 @@ class OpeningGapSystem(TradingSystem):
                 np.abs(lows[1:] - closes[:-1]),
             ),
         )
-
         return np.mean(tr[-self.atr_period:])
 
-    # ---------------------------------------------------------
-    # Signal Generation
-    # ---------------------------------------------------------
+    def signal(self, data):
+        closes = np.asarray(data["closes"])
+        highs = np.asarray(data["highs"])
+        lows = np.asarray(data["lows"])
 
-    def signal(self, data: dict) -> int:
-        """
-        ``data`` must include ``closes``, ``highs``, ``lows``, and ``opens``.
-
-        Returns
-        -------
-        1 = long
-        -1 = short
-        0 = no signal
-        """
-        closes = np.asarray(data["closes"], dtype=float)
-        highs = np.asarray(data["highs"], dtype=float)
-        lows = np.asarray(data["lows"], dtype=float)
-        opens = np.asarray(data["opens"], dtype=float)
-
-        atr = self._atr(highs, lows, closes)
-
-        if atr is None or atr == 0:
+        atr_val = self.atr(highs, lows, closes)
+        if atr_val is None or atr_val == 0:
             return 0
 
-        gap = opens[-1] - closes[-2]
+        if len(closes) < 2:
+            return 0
 
-        if gap > self.gap_threshold * atr:
+        prev_close = closes[-2]
+        gap_up = lows[-1] - prev_close
+        gap_down = prev_close - highs[-1]
+
+        if gap_up > self.gap_threshold * atr_val:
             return 1
-
-        if gap < -self.gap_threshold * atr:
+        if gap_down > self.gap_threshold * atr_val:
             return -1
-
         return 0
 
-    # ---------------------------------------------------------
-    # Position Sizing
-    # ---------------------------------------------------------
-
-    def position_sizing(self, data: dict, risk: dict) -> float:
-        """ATR-based position sizing."""
-        highs = np.asarray(data["highs"], dtype=float)
-        lows = np.asarray(data["lows"], dtype=float)
-        closes = np.asarray(data["closes"], dtype=float)
-
+    def position_sizing(self, data, risk):
+        highs, lows, closes = data["highs"], data["lows"], data["closes"]
         equity = risk["equity"]
         risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
-
-        atr = self._atr(highs, lows, closes)
-
-        if atr is None or atr == 0:
+        atr_val = self.atr(highs, lows, closes)
+        if atr_val is None or atr_val == 0:
             return 0
+        return equity * risk_per_trade / atr_val
 
-        return equity * risk_per_trade / atr
-
-    # ---------------------------------------------------------
-    # Risk Filter
-    # ---------------------------------------------------------
-
-    def risk_filter(self, data: dict) -> bool:
-        """Liquidity filter — requires volume above 20-day average."""
-        volumes = np.asarray(data["volumes"], dtype=float)
-
-        if len(volumes) < 20:
+    def risk_filter(self, data):
+        atr_val = self.atr(data["highs"], data["lows"], data["closes"])
+        if atr_val is None or atr_val <= 0:
             return False
+        return True
 
-        avg_volume = np.mean(volumes[-20:])
-        return float(volumes[-1]) > avg_volume
-
-    # ---------------------------------------------------------
-    # Indicators
-    # ---------------------------------------------------------
-
-    def indicators(self, data: dict) -> dict:
-        highs = np.asarray(data["highs"], dtype=float)
-        lows = np.asarray(data["lows"], dtype=float)
-        closes = np.asarray(data["closes"], dtype=float)
-        opens = np.asarray(data["opens"], dtype=float)
-
-        atr = self._atr(highs, lows, closes)
-        gap = opens[-1] - closes[-2] if len(closes) >= 2 else 0
-
-        return {"atr": atr, "gap": gap}
+    def indicators(self, data):
+        closes = np.asarray(data["closes"])
+        highs = np.asarray(data["highs"])
+        lows = np.asarray(data["lows"])
+        atr_val = self.atr(highs, lows, closes)
+        gap_up = float(lows[-1] - closes[-2]) if len(closes) >= 2 else None
+        gap_down = float(closes[-2] - highs[-1]) if len(closes) >= 2 else None
+        return {"atr": atr_val, "gap_up": gap_up, "gap_down": gap_down}

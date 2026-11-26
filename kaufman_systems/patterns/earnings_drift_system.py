@@ -1,22 +1,25 @@
 """
 Earnings Drift Pattern System
------------------------------
 
 Concept
 -------
-Stocks often continue trending after earnings announcements
-when the earnings surprise is significant.
+Large single-bar moves (earnings event proxy) often lead to
+continuation drift.  When bar[-2] had a return exceeding
+drift_threshold * ATR, the system follows the direction on bar[-1].
 
-Rules
------
-LONG
-    earnings_surprise > positive_threshold
+Signal logic
+------------
+event_return = abs(close[-2] - close[-3]) / close[-3]
+atr_return   = ATR / close[-3]
 
-SHORT
-    earnings_surprise < negative_threshold
+If abs(close[-2] - close[-3]) > drift_threshold * ATR:
+    close[-2] > close[-3] -> LONG  (upward drift)
+    close[-2] < close[-3] -> SHORT (downward drift)
+Otherwise                 -> FLAT
 
-EXIT
-    after holding_period days
+Risk model
+----------
+ATR-based position sizing.
 """
 
 import numpy as np
@@ -28,89 +31,69 @@ class EarningsDriftSystem(TradingSystem):
 
     def __init__(
         self,
-        positive_threshold: float = 0.05,
-        negative_threshold: float = -0.05,
-        holding_period: int = 10,
-        risk_per_trade: float = 0.01
+        drift_threshold: float = 2.0,
+        atr_period: int = 14,
+        risk_per_trade: float = 0.01,
     ):
-        """
-        Parameters
-        ----------
-        positive_threshold : float
-            positive earnings surprise threshold
-        negative_threshold : float
-            negative earnings surprise threshold
-        holding_period : int
-            number of days to hold trade
-        risk_per_trade : float
-            portfolio risk fraction
-        """
-        self.positive_threshold = positive_threshold
-        self.negative_threshold = negative_threshold
-        self.holding_period = holding_period
+        self.drift_threshold = drift_threshold
+        self.atr_period = atr_period
         self.risk_per_trade = risk_per_trade
 
-    # ---------------------------------------------------------
-    # Signal generation
-    # ---------------------------------------------------------
+    def atr(self, highs, lows, closes):
+        highs, lows, closes = np.asarray(highs), np.asarray(lows), np.asarray(closes)
+        if len(closes) < self.atr_period + 1:
+            return None
+        tr = np.maximum(
+            highs[1:] - lows[1:],
+            np.maximum(
+                np.abs(highs[1:] - closes[:-1]),
+                np.abs(lows[1:] - closes[:-1]),
+            ),
+        )
+        return np.mean(tr[-self.atr_period:])
 
-    def signal(self, data: dict) -> int:
-        """
-        ``data`` must include ``earnings_surprise`` (float).
+    def signal(self, data):
+        closes = np.asarray(data["closes"])
+        highs = np.asarray(data["highs"])
+        lows = np.asarray(data["lows"])
 
-        Returns
-        -------
-        1  -> long
-        -1 -> short
-        0  -> no trade
-        """
-        earnings_surprise = data["earnings_surprise"]
+        if len(closes) < 3:
+            return 0
 
-        if earnings_surprise > self.positive_threshold:
-            return 1
+        atr_val = self.atr(highs, lows, closes)
+        if atr_val is None or atr_val == 0:
+            return 0
 
-        if earnings_surprise < self.negative_threshold:
+        event_move = closes[-2] - closes[-3]
+
+        if abs(event_move) > self.drift_threshold * atr_val:
+            if event_move > 0:
+                return 1
             return -1
 
         return 0
 
-    # ---------------------------------------------------------
-    # Exit rule
-    # ---------------------------------------------------------
-
-    def exit_signal(self, entry_index: int, current_index: int) -> bool:
-        """Exit after fixed holding period."""
-        return (current_index - entry_index) >= self.holding_period
-
-    # ---------------------------------------------------------
-    # Position sizing
-    # ---------------------------------------------------------
-
-    def position_sizing(self, data: dict, risk: dict) -> float:
-        closes = np.asarray(data["closes"], dtype=float)
+    def position_sizing(self, data, risk):
+        highs, lows, closes = data["highs"], data["lows"], data["closes"]
         equity = risk["equity"]
         risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
-
-        if len(closes) < 2:
+        atr_val = self.atr(highs, lows, closes)
+        if atr_val is None or atr_val == 0:
             return 0
+        return equity * risk_per_trade / atr_val
 
-        returns = np.diff(closes) / closes[:-1]
-        volatility = np.std(returns[-20:]) * closes[-1] if len(returns) >= 20 else 0
-
-        if volatility == 0:
-            return 0
-
-        return equity * risk_per_trade / volatility
-
-    # ---------------------------------------------------------
-    # Risk filter
-    # ---------------------------------------------------------
-
-    def risk_filter(self, data: dict) -> bool:
-        volumes = np.asarray(data["volumes"], dtype=float)
-
-        if len(volumes) < 20:
+    def risk_filter(self, data):
+        atr_val = self.atr(data["highs"], data["lows"], data["closes"])
+        if atr_val is None or atr_val <= 0:
             return False
+        return True
 
-        avg_volume = np.mean(volumes[-20:])
-        return float(volumes[-1]) > avg_volume
+    def indicators(self, data):
+        closes = np.asarray(data["closes"])
+        highs = np.asarray(data["highs"])
+        lows = np.asarray(data["lows"])
+        atr_val = self.atr(highs, lows, closes)
+        event_move = float(closes[-2] - closes[-3]) if len(closes) >= 3 else None
+        is_event = (event_move is not None and atr_val is not None and
+                    atr_val != 0 and abs(event_move) > self.drift_threshold * atr_val)
+        return {"atr": atr_val, "event_move": event_move, "is_event": is_event}

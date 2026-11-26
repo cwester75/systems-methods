@@ -45,6 +45,53 @@ from kaufman_systems.range_expansion.volatility_expansion_breakout import Volati
 from kaufman_systems.range_expansion.vix_expansion_system import VIXExpansionSystem
 from kaufman_systems.range_expansion.range_percentile_system import RangePercentileSystem
 
+# Phase 3 — Pattern Recognition
+from kaufman_systems.patterns.opening_gap_system import OpeningGapSystem
+from kaufman_systems.patterns.weekend_effect_system import WeekendEffectSystem
+from kaufman_systems.patterns.weekday_pattern_system import WeekdayPatternSystem
+from kaufman_systems.patterns.reversal_pattern_system import ReversalPatternSystem
+from kaufman_systems.patterns.time_of_day_pattern import TimeOfDayPatternSystem
+from kaufman_systems.patterns.intraday_range_pattern import IntradayRangePatternSystem
+from kaufman_systems.patterns.seasonal_pattern_system import SeasonalPatternSystem
+from kaufman_systems.patterns.monthly_turn_system import MonthlyTurnSystem
+from kaufman_systems.patterns.holiday_effect_system import HolidayEffectSystem
+from kaufman_systems.patterns.earnings_drift_system import EarningsDriftSystem
+
+# Phase 4 — Spread & Relative Value
+from kaufman_systems.spread.intermarket_spread_system import IntermarketSpreadSystem
+from kaufman_systems.spread.ratio_spread_system import RatioSpreadSystem
+from kaufman_systems.spread.pairs_trading_system import PairsTradingSystem
+from kaufman_systems.spread.mean_reversion_spread import MeanReversionSpreadSystem
+from kaufman_systems.spread.carry_spread_system import CarrySpreadSystem
+from kaufman_systems.spread.term_structure_spread import TermStructureSpreadSystem
+from kaufman_systems.arbitrage.cash_and_carry_system import CashAndCarrySystem
+from kaufman_systems.arbitrage.calendar_spread_system import CalendarSpreadSystem
+from kaufman_systems.arbitrage.commodity_crack_spread import CommodityCrackSpreadSystem
+from kaufman_systems.arbitrage.interexchange_arbitrage import InterexchangeArbitrageSystem
+
+# Phase 5 — Behavioral & Sentiment
+from kaufman_systems.behavioral.cot_positioning_system import COTPositioningSystem
+from kaufman_systems.behavioral.news_event_system import NewsEventSystem
+from kaufman_systems.behavioral.sentiment_contrarian_system import SentimentContrarianSystem
+from kaufman_systems.behavioral.opinion_indicator_system import OpinionIndicatorSystem
+from kaufman_systems.behavioral.fibonacci_projection_system import FibonacciProjectionSystem
+from kaufman_systems.behavioral.elliott_wave_filter import ElliottWaveFilterSystem
+from kaufman_systems.cycle.gann_time_cycle_system import GannTimeCycleSystem
+from kaufman_systems.cycle.price_time_cycle_system import PriceTimeCycleSystem
+from kaufman_systems.cycle.market_sentiment_index_system import MarketSentimentIndexSystem
+from kaufman_systems.cycle.crowd_behavior_system import CrowdBehaviorSystem
+
+# Phase 6 — Adaptive & Multi-Timeframe
+from kaufman_systems.adaptive.adaptive_trend_system import AdaptiveTrendSystem
+from kaufman_systems.adaptive.adaptive_momentum_system import AdaptiveMomentumSystem
+from kaufman_systems.adaptive.adaptive_channel_system import AdaptiveChannelSystem
+from kaufman_systems.multi_timeframe.dual_timeframe_trend import DualTimeframeTrendSystem
+from kaufman_systems.multi_timeframe.triple_screen_system import TripleScreenSystem
+from kaufman_systems.multi_timeframe.multi_resolution_momentum import MultiResolutionMomentumSystem
+from kaufman_systems.advanced.volatility_weighted_trend import VolatilityWeightedTrendSystem
+from kaufman_systems.advanced.noise_filtered_trend import NoiseFilteredTrendSystem
+from kaufman_systems.advanced.price_volume_distribution_system import PriceVolumeDistributionSystem
+
 
 # -------------------------------------------------------------------
 # Fixtures
@@ -59,6 +106,7 @@ DATA = {"closes": _closes, "highs": _highs, "lows": _lows}
 RISK = {"equity": 100_000.0}
 
 ALL_SYSTEMS = [
+    # Phase 1
     ERTrendSystem(),
     LinearRegressionTrendSystem(),
     DualMASystem(),
@@ -70,6 +118,7 @@ ALL_SYSTEMS = [
     RSIReversalSystem(),
     KaufmanAdaptiveSystem(),
     BollingerBreakoutSystem(),
+    # Phase 2A
     PriceChannelBreakoutSystem(),
     MovingChannelSystem(),
     RegressionChannelSystem(),
@@ -80,6 +129,7 @@ ALL_SYSTEMS = [
     CongestionBreakoutSystem(),
     RangeExpansionSystem(),
     InsideDayBreakoutSystem(),
+    # Phase 2B
     BollingerSqueezeSystem(),
     KeltnerSqueezeSystem(),
     ATRContractionSystem(),
@@ -90,6 +140,49 @@ ALL_SYSTEMS = [
     VolatilityExpansionBreakoutSystem(),
     VIXExpansionSystem(),
     RangePercentileSystem(),
+    # Phase 3
+    OpeningGapSystem(),
+    WeekendEffectSystem(),
+    WeekdayPatternSystem(),
+    ReversalPatternSystem(),
+    TimeOfDayPatternSystem(),
+    IntradayRangePatternSystem(),
+    SeasonalPatternSystem(),
+    MonthlyTurnSystem(),
+    HolidayEffectSystem(),
+    EarningsDriftSystem(),
+    # Phase 4
+    IntermarketSpreadSystem(),
+    RatioSpreadSystem(),
+    PairsTradingSystem(),
+    MeanReversionSpreadSystem(),
+    CarrySpreadSystem(),
+    TermStructureSpreadSystem(),
+    CashAndCarrySystem(),
+    CalendarSpreadSystem(),
+    CommodityCrackSpreadSystem(),
+    InterexchangeArbitrageSystem(),
+    # Phase 5
+    COTPositioningSystem(),
+    NewsEventSystem(),
+    SentimentContrarianSystem(),
+    OpinionIndicatorSystem(),
+    FibonacciProjectionSystem(),
+    ElliottWaveFilterSystem(),
+    GannTimeCycleSystem(),
+    PriceTimeCycleSystem(),
+    MarketSentimentIndexSystem(),
+    CrowdBehaviorSystem(),
+    # Phase 6
+    AdaptiveTrendSystem(),
+    AdaptiveMomentumSystem(),
+    AdaptiveChannelSystem(),
+    DualTimeframeTrendSystem(),
+    TripleScreenSystem(),
+    MultiResolutionMomentumSystem(),
+    VolatilityWeightedTrendSystem(),
+    NoiseFilteredTrendSystem(),
+    PriceVolumeDistributionSystem(),
 ]
 
 

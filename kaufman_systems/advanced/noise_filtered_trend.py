@@ -12,7 +12,7 @@ import numpy as np
 from kaufman_systems.base import TradingSystem
 
 
-class NoiseFilteredTrend(TradingSystem):
+class NoiseFilteredTrendSystem(TradingSystem):
 
     def __init__(
         self,
@@ -81,12 +81,13 @@ class NoiseFilteredTrend(TradingSystem):
         if atr == 0:
             return 0
 
-        return equity * self.risk_per_trade / atr
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
+        return equity * risk_per_trade / atr
 
     def risk_filter(self, data):
         closes = np.asarray(data["closes"])
         er = self.efficiency_ratio(closes)
-        return er is not None and er >= self.er_threshold
+        return bool(er is not None and er >= self.er_threshold)
 
     def indicators(self, data):
         closes = data["closes"]

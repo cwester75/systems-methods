@@ -1,19 +1,24 @@
 """
 Holiday Effect Pattern System
------------------------------
 
 Concept
 -------
-Equity markets often experience positive returns immediately
-before major holidays (e.g., Christmas, Thanksgiving).
+Pre-holiday periods often exhibit low volatility and bullish drift.
+This system uses volatility contraction as a holiday proxy: when
+short-term ATR drops below a fraction of longer-term ATR, the
+market is in a low-volatility "holiday-like" condition.
 
-Rules
------
-LONG
-    enter at close before holiday
+Signal logic
+------------
+short_atr = ATR over short_atr_period bars
+long_atr  = ATR over long_atr_period bars
 
-EXIT
-    next trading day close
+If short_atr < contraction_pct * long_atr -> LONG (bullish holiday effect)
+Otherwise                                 -> FLAT
+
+Risk model
+----------
+ATR-based position sizing (uses long_atr for sizing).
 """
 
 import numpy as np
@@ -25,75 +30,67 @@ class HolidayEffectSystem(TradingSystem):
 
     def __init__(
         self,
-        holidays=None,
-        risk_per_trade: float = 0.01
+        short_atr_period: int = 5,
+        long_atr_period: int = 20,
+        contraction_pct: float = 0.6,
+        atr_period: int = 14,
+        risk_per_trade: float = 0.01,
     ):
-        """
-        Parameters
-        ----------
-        holidays : list of datetime.date
-            list of market holiday dates
-        risk_per_trade : float
-            portfolio risk fraction
-        """
-        self.holidays = holidays if holidays is not None else []
+        self.short_atr_period = short_atr_period
+        self.long_atr_period = long_atr_period
+        self.contraction_pct = contraction_pct
+        self.atr_period = atr_period
         self.risk_per_trade = risk_per_trade
 
-    # ---------------------------------------------------------
-    # Signal generation
-    # ---------------------------------------------------------
+    def _compute_atr(self, highs, lows, closes, period):
+        highs, lows, closes = np.asarray(highs), np.asarray(lows), np.asarray(closes)
+        if len(closes) < period + 1:
+            return None
+        tr = np.maximum(
+            highs[1:] - lows[1:],
+            np.maximum(
+                np.abs(highs[1:] - closes[:-1]),
+                np.abs(lows[1:] - closes[:-1]),
+            ),
+        )
+        return np.mean(tr[-period:])
 
-    def signal(self, data: dict) -> int:
-        """
-        ``data`` must include ``today`` (datetime.date) and
-        ``tomorrow_is_holiday`` (bool).
+    def atr(self, highs, lows, closes):
+        return self._compute_atr(highs, lows, closes, self.atr_period)
 
-        Returns
-        -------
-        1 -> long
-        -1 -> exit
-        0 -> no signal
-        """
-        today = data["today"]
-        tomorrow_is_holiday = data.get("tomorrow_is_holiday", False)
+    def signal(self, data):
+        highs, lows, closes = data["highs"], data["lows"], data["closes"]
 
-        if tomorrow_is_holiday:
+        short_atr = self._compute_atr(highs, lows, closes, self.short_atr_period)
+        long_atr = self._compute_atr(highs, lows, closes, self.long_atr_period)
+
+        if short_atr is None or long_atr is None or long_atr == 0:
+            return 0
+
+        if short_atr < self.contraction_pct * long_atr:
             return 1
-
-        if today in self.holidays:
-            return -1
 
         return 0
 
-    # ---------------------------------------------------------
-    # Position sizing
-    # ---------------------------------------------------------
-
-    def position_sizing(self, data: dict, risk: dict) -> float:
-        closes = np.asarray(data["closes"], dtype=float)
+    def position_sizing(self, data, risk):
+        highs, lows, closes = data["highs"], data["lows"], data["closes"]
         equity = risk["equity"]
         risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
-
-        if len(closes) < 2:
+        atr_val = self.atr(highs, lows, closes)
+        if atr_val is None or atr_val == 0:
             return 0
+        return equity * risk_per_trade / atr_val
 
-        returns = np.diff(closes) / closes[:-1]
-        volatility = np.std(returns[-20:]) * closes[-1] if len(returns) >= 20 else 0
-
-        if volatility == 0:
-            return 0
-
-        return equity * risk_per_trade / volatility
-
-    # ---------------------------------------------------------
-    # Risk filter
-    # ---------------------------------------------------------
-
-    def risk_filter(self, data: dict) -> bool:
-        volumes = np.asarray(data["volumes"], dtype=float)
-
-        if len(volumes) < 20:
+    def risk_filter(self, data):
+        atr_val = self.atr(data["highs"], data["lows"], data["closes"])
+        if atr_val is None or atr_val <= 0:
             return False
+        return True
 
-        avg_volume = np.mean(volumes[-20:])
-        return float(volumes[-1]) > avg_volume
+    def indicators(self, data):
+        highs, lows, closes = data["highs"], data["lows"], data["closes"]
+        short_atr = self._compute_atr(highs, lows, closes, self.short_atr_period)
+        long_atr = self._compute_atr(highs, lows, closes, self.long_atr_period)
+        ratio = short_atr / long_atr if short_atr is not None and long_atr and long_atr != 0 else None
+        is_contraction = ratio is not None and ratio < self.contraction_pct
+        return {"short_atr": short_atr, "long_atr": long_atr, "atr_ratio": ratio, "is_contraction": is_contraction}

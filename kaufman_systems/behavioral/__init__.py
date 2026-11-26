@@ -3,7 +3,7 @@ from .news_event_system import NewsEventSystem
 from .sentiment_contrarian_system import SentimentContrarianSystem
 from .opinion_indicator_system import OpinionIndicatorSystem
 from .fibonacci_projection_system import FibonacciProjectionSystem
-from .elliott_wave_filter import ElliottWaveFilter
+from .elliott_wave_filter import ElliottWaveFilterSystem
 
 __all__ = [
     "COTPositioningSystem",
@@ -11,5 +11,5 @@ __all__ = [
     "SentimentContrarianSystem",
     "OpinionIndicatorSystem",
     "FibonacciProjectionSystem",
-    "ElliottWaveFilter",
+    "ElliottWaveFilterSystem",
 ]
