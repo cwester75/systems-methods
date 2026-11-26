@@ -50,7 +50,7 @@ class SentimentContrarianSystem(TradingSystem):
         avg_gain = np.mean(gains)
         avg_loss = np.mean(losses)
         if avg_loss == 0:
-            return 100.0
+            return 50.0 if avg_gain == 0 else 100.0
         rs = avg_gain / avg_loss
         return 100.0 - 100.0 / (1.0 + rs)
 
