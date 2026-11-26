@@ -14,7 +14,7 @@ import numpy as np
 from kaufman_systems.base import TradingSystem
 
 
-class DualTimeframeTrend(TradingSystem):
+class DualTimeframeTrendSystem(TradingSystem):
 
     def __init__(
         self,
@@ -37,8 +37,8 @@ class DualTimeframeTrend(TradingSystem):
         slow_ma = np.mean(closes[-self.slow_period :])
         fast_ma = np.mean(closes[-self.fast_period :])
 
-        trend = 1 if closes[-1] > slow_ma else -1
-        entry = 1 if closes[-1] > fast_ma else -1
+        trend = int(np.sign(closes[-1] - slow_ma))
+        entry = int(np.sign(closes[-1] - fast_ma))
 
         if trend > 0 and entry > 0:
             return 1
@@ -67,11 +67,26 @@ class DualTimeframeTrend(TradingSystem):
         if atr == 0:
             return 0
 
-        return equity * self.risk_per_trade / atr
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
+        return equity * risk_per_trade / atr
 
     def risk_filter(self, data):
         closes = np.asarray(data["closes"])
-        return len(closes) >= self.slow_period
+        highs = np.asarray(data["highs"])
+        lows = np.asarray(data["lows"])
+        if len(closes) < self.atr_period + 1:
+            return False
+        tr = np.maximum(
+            highs[1:] - lows[1:],
+            np.maximum(
+                np.abs(highs[1:] - closes[:-1]),
+                np.abs(lows[1:] - closes[:-1]),
+            ),
+        )
+        atr = np.mean(tr[-self.atr_period:])
+        if atr <= 0:
+            return False
+        return True
 
     def indicators(self, data):
         closes = np.asarray(data["closes"])

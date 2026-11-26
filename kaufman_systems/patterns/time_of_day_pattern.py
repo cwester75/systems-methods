@@ -1,24 +1,25 @@
 """
 Time-of-Day Pattern System
---------------------------
 
 Concept
 -------
-Markets exhibit recurring intraday behavior patterns:
+Position within the recent N-bar price range as a momentum proxy.
+When price is in the upper extreme of the recent range, momentum
+is bullish; in the lower extreme, bearish.
 
-Opening Session
-    high volatility
-Midday
-    consolidation
-Closing Session
-    directional move / position squaring
+Signal logic
+------------
+range_high = max(highs[-range_period:])
+range_low  = min(lows[-range_period:])
+pct = (close - range_low) / (range_high - range_low)
 
-This system trades breakouts during the opening window
-and optionally exits during the closing session.
+If pct > 1 - threshold_pct -> LONG
+If pct < threshold_pct     -> SHORT
+Otherwise                  -> FLAT
 
-Data Requirement
-----------------
-Intraday bars with opening-range high/low passed in data dict.
+Risk model
+----------
+ATR-based position sizing.
 """
 
 import numpy as np
@@ -30,92 +31,78 @@ class TimeOfDayPatternSystem(TradingSystem):
 
     def __init__(
         self,
-        open_window_minutes: int = 30,
-        close_window_minutes: int = 30,
-        risk_per_trade: float = 0.01
+        range_period: int = 20,
+        threshold_pct: float = 0.20,
+        atr_period: int = 14,
+        risk_per_trade: float = 0.01,
     ):
-        """
-        Parameters
-        ----------
-        open_window_minutes : int
-            opening range measurement window
-        close_window_minutes : int
-            closing exit window
-        risk_per_trade : float
-            portfolio risk per trade
-        """
-        self.open_window_minutes = open_window_minutes
-        self.close_window_minutes = close_window_minutes
+        self.range_period = range_period
+        self.threshold_pct = threshold_pct
+        self.atr_period = atr_period
         self.risk_per_trade = risk_per_trade
 
-    # ---------------------------------------------------------
-    # Signal generation
-    # ---------------------------------------------------------
+    def atr(self, highs, lows, closes):
+        highs, lows, closes = np.asarray(highs), np.asarray(lows), np.asarray(closes)
+        if len(closes) < self.atr_period + 1:
+            return None
+        tr = np.maximum(
+            highs[1:] - lows[1:],
+            np.maximum(
+                np.abs(highs[1:] - closes[:-1]),
+                np.abs(lows[1:] - closes[:-1]),
+            ),
+        )
+        return np.mean(tr[-self.atr_period:])
 
-    def signal(self, data: dict) -> int:
-        """
-        ``data`` must include ``closes`` and ``opening_range``
-        (a tuple/list of ``(range_high, range_low)``).
+    def signal(self, data):
+        closes = np.asarray(data["closes"])
+        highs = np.asarray(data["highs"])
+        lows = np.asarray(data["lows"])
 
-        Returns
-        -------
-        1  -> long breakout
-        -1 -> short breakout
-        0  -> no signal
-        """
-        closes = np.asarray(data["closes"], dtype=float)
-        range_high, range_low = data["opening_range"]
+        if len(closes) < self.range_period:
+            return 0
 
-        price = closes[-1]
+        range_high = np.max(highs[-self.range_period:])
+        range_low = np.min(lows[-self.range_period:])
+        span = range_high - range_low
 
-        if price > range_high:
+        if span == 0:
+            return 0
+
+        pct = (closes[-1] - range_low) / span
+
+        if pct > 1 - self.threshold_pct:
             return 1
-
-        if price < range_low:
+        if pct < self.threshold_pct:
             return -1
-
         return 0
 
-    # ---------------------------------------------------------
-    # Position sizing
-    # ---------------------------------------------------------
-
-    def position_sizing(self, data: dict, risk: dict) -> float:
-        closes = np.asarray(data["closes"], dtype=float)
+    def position_sizing(self, data, risk):
+        highs, lows, closes = data["highs"], data["lows"], data["closes"]
         equity = risk["equity"]
         risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
-
-        if len(closes) < 2:
+        atr_val = self.atr(highs, lows, closes)
+        if atr_val is None or atr_val == 0:
             return 0
+        return equity * risk_per_trade / atr_val
 
-        returns = np.diff(closes) / closes[:-1]
-        volatility = np.std(returns[-20:]) * closes[-1] if len(returns) >= 20 else 0
-
-        if volatility == 0:
-            return 0
-
-        return equity * risk_per_trade / volatility
-
-    # ---------------------------------------------------------
-    # Risk filter
-    # ---------------------------------------------------------
-
-    def risk_filter(self, data: dict) -> bool:
-        volumes = np.asarray(data["volumes"], dtype=float)
-
-        if len(volumes) < 20:
+    def risk_filter(self, data):
+        atr_val = self.atr(data["highs"], data["lows"], data["closes"])
+        if atr_val is None or atr_val <= 0:
             return False
+        return True
 
-        avg_volume = np.mean(volumes[-20:])
-        return float(volumes[-1]) > avg_volume
+    def indicators(self, data):
+        closes = np.asarray(data["closes"])
+        highs = np.asarray(data["highs"])
+        lows = np.asarray(data["lows"])
 
-    # ---------------------------------------------------------
-    # Indicators
-    # ---------------------------------------------------------
+        if len(closes) < self.range_period:
+            return {"range_high": None, "range_low": None, "pct_position": None}
 
-    def indicators(self, data: dict) -> dict:
-        range_high, range_low = data["opening_range"]
-        return {
-            "opening_range_high": range_high,
-            "opening_range_low": range_low,
-        }
+        range_high = float(np.max(highs[-self.range_period:]))
+        range_low = float(np.min(lows[-self.range_period:]))
+        span = range_high - range_low
+        pct = float((closes[-1] - range_low) / span) if span != 0 else None
+
+        return {"range_high": range_high, "range_low": range_low, "pct_position": pct}

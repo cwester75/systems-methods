@@ -1,27 +1,23 @@
 """
 Weekday Pattern System
-----------------------
 
 Concept
 -------
-Some assets show consistent return bias by weekday.
+Some assets show consistent return bias by position within a 5-bar
+cycle (approximating weekdays).  The system measures rolling average
+returns per cycle position and trades when the current position shows
+a statistically significant positive or negative bias.
 
-Example patterns often observed:
-    Monday      weak
-    Wednesday   strong
-    Friday      profit taking
+Signal logic
+------------
+Compute average return per cycle position over the lookback window.
+If current position avg return > threshold  -> LONG
+If current position avg return < -threshold -> SHORT
+Otherwise                                   -> FLAT
 
-The system measures rolling average weekday returns and
-trades when the current weekday shows statistically positive
-or negative bias.
-
-Rules
------
-LONG
-    if weekday average return > threshold
-
-SHORT
-    if weekday average return < -threshold
+Risk model
+----------
+ATR-based position sizing.
 """
 
 import numpy as np
@@ -33,115 +29,78 @@ class WeekdayPatternSystem(TradingSystem):
 
     def __init__(
         self,
-        lookback: int = 252,
+        cycle_length: int = 5,
+        lookback: int = 100,
         threshold: float = 0.001,
-        risk_per_trade: float = 0.01
+        atr_period: int = 14,
+        risk_per_trade: float = 0.01,
     ):
-        """
-        Parameters
-        ----------
-        lookback : int
-            number of days used for weekday statistics
-        threshold : float
-            minimum expected return to trigger signal
-        risk_per_trade : float
-            portfolio risk fraction
-        """
+        self.cycle_length = cycle_length
         self.lookback = lookback
         self.threshold = threshold
+        self.atr_period = atr_period
         self.risk_per_trade = risk_per_trade
 
-    # ---------------------------------------------------------
-    # Calculate weekday return profile
-    # ---------------------------------------------------------
+    def atr(self, highs, lows, closes):
+        highs, lows, closes = np.asarray(highs), np.asarray(lows), np.asarray(closes)
+        if len(closes) < self.atr_period + 1:
+            return None
+        tr = np.maximum(
+            highs[1:] - lows[1:],
+            np.maximum(
+                np.abs(highs[1:] - closes[:-1]),
+                np.abs(lows[1:] - closes[:-1]),
+            ),
+        )
+        return np.mean(tr[-self.atr_period:])
 
-    def _weekday_returns(self, closes, weekdays):
-        """Compute mean return per weekday over the lookback window."""
-        closes = np.asarray(closes, dtype=float)
-        weekdays = np.asarray(weekdays, dtype=int)
+    def _weekday_avg_return(self, closes):
+        closes = np.asarray(closes)
+        if len(closes) < self.lookback + 1:
+            return None
 
-        returns = np.diff(closes) / closes[:-1]
-        wdays = weekdays[1:]
+        returns = np.diff(closes[-self.lookback - 1:]) / closes[-self.lookback - 1:-1]
+        n = len(returns)
+        current_pos = (n - 1) % self.cycle_length
+        positions = np.arange(n) % self.cycle_length
+        mask = positions == current_pos
+        if not np.any(mask):
+            return None
+        return float(np.mean(returns[mask]))
 
-        n = min(self.lookback, len(returns))
-        returns = returns[-n:]
-        wdays = wdays[-n:]
+    def signal(self, data):
+        closes = data["closes"]
+        if len(np.asarray(closes)) < self.lookback + 1:
+            return 0
 
-        means = {}
-        for d in range(5):
-            mask = wdays == d
-            if np.any(mask):
-                means[d] = float(np.mean(returns[mask]))
-            else:
-                means[d] = 0.0
-        return means
+        avg_ret = self._weekday_avg_return(closes)
+        if avg_ret is None:
+            return 0
 
-    # ---------------------------------------------------------
-    # Signal generation
-    # ---------------------------------------------------------
-
-    def signal(self, data: dict) -> int:
-        """
-        ``data`` must include ``closes``, ``weekdays`` (array of int 0-4),
-        and ``weekday`` (int, current day).
-
-        Returns
-        -------
-        1  -> long
-        -1 -> short
-        0  -> neutral
-        """
-        weekday_profile = self._weekday_returns(data["closes"], data["weekdays"])
-        today = data["weekday"]
-
-        expected_return = weekday_profile.get(today, 0)
-
-        if expected_return > self.threshold:
+        if avg_ret > self.threshold:
             return 1
-
-        if expected_return < -self.threshold:
+        if avg_ret < -self.threshold:
             return -1
-
         return 0
 
-    # ---------------------------------------------------------
-    # Position sizing
-    # ---------------------------------------------------------
-
-    def position_sizing(self, data: dict, risk: dict) -> float:
-        closes = np.asarray(data["closes"], dtype=float)
+    def position_sizing(self, data, risk):
+        highs, lows, closes = data["highs"], data["lows"], data["closes"]
         equity = risk["equity"]
         risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
-
-        if len(closes) < 2:
+        atr_val = self.atr(highs, lows, closes)
+        if atr_val is None or atr_val == 0:
             return 0
+        return equity * risk_per_trade / atr_val
 
-        returns = np.diff(closes) / closes[:-1]
-        volatility = np.std(returns[-20:]) * closes[-1] if len(returns) >= 20 else 0
-
-        if volatility == 0:
-            return 0
-
-        return equity * risk_per_trade / volatility
-
-    # ---------------------------------------------------------
-    # Risk filter
-    # ---------------------------------------------------------
-
-    def risk_filter(self, data: dict) -> bool:
-        """Liquidity filter."""
-        volumes = np.asarray(data["volumes"], dtype=float)
-
-        if len(volumes) < 20:
+    def risk_filter(self, data):
+        atr_val = self.atr(data["highs"], data["lows"], data["closes"])
+        if atr_val is None or atr_val <= 0:
             return False
+        return True
 
-        avg_volume = np.mean(volumes[-20:])
-        return float(volumes[-1]) > avg_volume
-
-    # ---------------------------------------------------------
-    # Indicators
-    # ---------------------------------------------------------
-
-    def indicators(self, data: dict) -> dict:
-        profile = self._weekday_returns(data["closes"], data["weekdays"])
-        return {"weekday_returns": profile}
+    def indicators(self, data):
+        closes = data["closes"]
+        avg_ret = self._weekday_avg_return(closes)
+        n = len(np.asarray(closes))
+        current_pos = (n - 1) % self.cycle_length if n > 0 else None
+        return {"cycle_position": current_pos, "avg_return_at_position": avg_ret}

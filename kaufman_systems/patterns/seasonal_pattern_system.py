@@ -1,33 +1,21 @@
 """
 Seasonal Pattern System
------------------------
 
 Concept
 -------
-Many assets exhibit recurring seasonal behavior.
+Detects seasonal (periodic) return patterns using a fixed cycle
+period.  Compares the current price to its value one cycle ago
+to identify seasonal uptrends and downtrends.
 
-Examples
---------
-Retail stocks:
-    strength into holidays
+Signal logic
+------------
+If close[-1] > close[-cycle_period]  -> LONG  (seasonal uptrend)
+If close[-1] < close[-cycle_period]  -> SHORT (seasonal downtrend)
+Otherwise                            -> FLAT
 
-Energy markets:
-    winter demand
-
-Agricultural commodities:
-    harvest cycles
-
-This system computes historical seasonal returns and
-trades when the current day-of-year has positive or
-negative expected return.
-
-Rules
------
-LONG
-    expected seasonal return > threshold
-
-SHORT
-    expected seasonal return < -threshold
+Risk model
+----------
+ATR-based position sizing.
 """
 
 import numpy as np
@@ -39,115 +27,66 @@ class SeasonalPatternSystem(TradingSystem):
 
     def __init__(
         self,
-        lookback_years: int = 10,
-        threshold: float = 0.002,
-        risk_per_trade: float = 0.01
+        cycle_period: int = 252,
+        min_bars: int = 50,
+        atr_period: int = 14,
+        risk_per_trade: float = 0.01,
     ):
-        """
-        Parameters
-        ----------
-        lookback_years : int
-            number of years used for seasonal statistics
-        threshold : float
-            minimum seasonal bias to trigger trade
-        risk_per_trade : float
-            portfolio risk fraction
-        """
-        self.lookback_years = lookback_years
-        self.threshold = threshold
+        self.cycle_period = cycle_period
+        self.min_bars = min_bars
+        self.atr_period = atr_period
         self.risk_per_trade = risk_per_trade
 
-    # ---------------------------------------------------------
-    # Seasonal return profile
-    # ---------------------------------------------------------
-
-    def _seasonal_returns(self, closes, day_of_years):
-        """Compute mean return per day-of-year."""
-        closes = np.asarray(closes, dtype=float)
-        day_of_years = np.asarray(day_of_years, dtype=int)
-
-        returns = np.diff(closes) / closes[:-1]
-        doys = day_of_years[1:]
-
-        means = {}
-        for d in np.unique(doys):
-            mask = doys == d
-            if np.any(mask):
-                means[int(d)] = float(np.mean(returns[mask]))
-        return means
-
-    # ---------------------------------------------------------
-    # Signal generation
-    # ---------------------------------------------------------
-
-    def signal(self, data: dict) -> int:
-        """
-        ``data`` must include ``closes``, ``day_of_years``
-        (array of int 1–366), and ``day_of_year`` (int, current day).
-
-        Returns
-        -------
-        1  -> long
-        -1 -> short
-        0  -> neutral
-        """
-        seasonal_profile = self._seasonal_returns(
-            data["closes"], data["day_of_years"]
+    def atr(self, highs, lows, closes):
+        highs, lows, closes = np.asarray(highs), np.asarray(lows), np.asarray(closes)
+        if len(closes) < self.atr_period + 1:
+            return None
+        tr = np.maximum(
+            highs[1:] - lows[1:],
+            np.maximum(
+                np.abs(highs[1:] - closes[:-1]),
+                np.abs(lows[1:] - closes[:-1]),
+            ),
         )
-        today = data["day_of_year"]
+        return np.mean(tr[-self.atr_period:])
 
-        expected_return = seasonal_profile.get(today, 0)
+    def signal(self, data):
+        closes = np.asarray(data["closes"])
 
-        if expected_return > self.threshold:
+        required = max(self.cycle_period + 1, self.min_bars)
+        if len(closes) < required:
+            return 0
+
+        past_price = closes[-(self.cycle_period + 1)]
+        if past_price == 0:
+            return 0
+
+        if closes[-1] > past_price:
             return 1
-
-        if expected_return < -self.threshold:
+        if closes[-1] < past_price:
             return -1
-
         return 0
 
-    # ---------------------------------------------------------
-    # Position sizing
-    # ---------------------------------------------------------
-
-    def position_sizing(self, data: dict, risk: dict) -> float:
-        closes = np.asarray(data["closes"], dtype=float)
+    def position_sizing(self, data, risk):
+        highs, lows, closes = data["highs"], data["lows"], data["closes"]
         equity = risk["equity"]
         risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
-
-        if len(closes) < 2:
+        atr_val = self.atr(highs, lows, closes)
+        if atr_val is None or atr_val == 0:
             return 0
+        return equity * risk_per_trade / atr_val
 
-        returns = np.diff(closes) / closes[:-1]
-        volatility = np.std(returns[-20:]) * closes[-1] if len(returns) >= 20 else 0
-
-        if volatility == 0:
-            return 0
-
-        return equity * risk_per_trade / volatility
-
-    # ---------------------------------------------------------
-    # Risk filter
-    # ---------------------------------------------------------
-
-    def risk_filter(self, data: dict) -> bool:
-        """Liquidity filter."""
-        volumes = np.asarray(data["volumes"], dtype=float)
-
-        if len(volumes) < 20:
+    def risk_filter(self, data):
+        atr_val = self.atr(data["highs"], data["lows"], data["closes"])
+        if atr_val is None or atr_val <= 0:
             return False
+        return True
 
-        avg_volume = np.mean(volumes[-20:])
-        return float(volumes[-1]) > avg_volume
-
-    # ---------------------------------------------------------
-    # Indicators
-    # ---------------------------------------------------------
-
-    def indicators(self, data: dict) -> dict:
-        profile = self._seasonal_returns(data["closes"], data["day_of_years"])
-        today = data["day_of_year"]
-        return {
-            "seasonal_returns": profile,
-            "expected_return_today": profile.get(today, 0),
-        }
+    def indicators(self, data):
+        closes = np.asarray(data["closes"])
+        required = max(self.cycle_period + 1, self.min_bars)
+        if len(closes) < required:
+            return {"seasonal_return": None, "cycle_period": self.cycle_period}
+        past_price = closes[-(self.cycle_period + 1)]
+        seasonal_ret = float((closes[-1] - past_price) / past_price) if past_price != 0 else None
+        return {"seasonal_return": seasonal_ret, "cycle_period": self.cycle_period}

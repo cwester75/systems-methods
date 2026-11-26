@@ -105,11 +105,26 @@ class TripleScreenSystem(TradingSystem):
         if atr == 0:
             return 0
 
-        return equity * self.risk_per_trade / atr
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
+        return equity * risk_per_trade / atr
 
     def risk_filter(self, data):
         closes = np.asarray(data["closes"])
-        return len(closes) >= self.trend_period
+        highs = np.asarray(data["highs"])
+        lows = np.asarray(data["lows"])
+        if len(closes) < self.atr_period + 1:
+            return False
+        tr = np.maximum(
+            highs[1:] - lows[1:],
+            np.maximum(
+                np.abs(highs[1:] - closes[:-1]),
+                np.abs(lows[1:] - closes[:-1]),
+            ),
+        )
+        atr = np.mean(tr[-self.atr_period:])
+        if atr <= 0:
+            return False
+        return True
 
     def indicators(self, data):
         closes = np.asarray(data["closes"])

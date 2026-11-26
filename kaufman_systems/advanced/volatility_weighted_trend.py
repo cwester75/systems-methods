@@ -12,7 +12,7 @@ import numpy as np
 from kaufman_systems.base import TradingSystem
 
 
-class VolatilityWeightedTrend(TradingSystem):
+class VolatilityWeightedTrendSystem(TradingSystem):
 
     def __init__(
         self,
@@ -78,7 +78,8 @@ class VolatilityWeightedTrend(TradingSystem):
         if atr == 0:
             return 0
 
-        return equity * self.risk_per_trade / atr
+        risk_per_trade = risk.get("risk_per_trade", self.risk_per_trade)
+        return equity * risk_per_trade / atr
 
     def risk_filter(self, data):
         closes = np.asarray(data["closes"])
