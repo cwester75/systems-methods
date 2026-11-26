@@ -92,6 +92,13 @@ from kaufman_systems.advanced.volatility_weighted_trend import VolatilityWeighte
 from kaufman_systems.advanced.noise_filtered_trend import NoiseFilteredTrendSystem
 from kaufman_systems.advanced.price_volume_distribution_system import PriceVolumeDistributionSystem
 
+# Phase 7 — Optimization / AI
+from kaufman_systems.optimization.genetic_algorithm_system import GeneticAlgorithmSystem
+from kaufman_systems.optimization.neural_network_predictor import NeuralNetworkPredictor
+from kaufman_systems.optimization.fuzzy_logic_system import FuzzyLogicSystem
+from kaufman_systems.optimization.expert_system import ExpertSystem
+from kaufman_systems.optimization.fractal_chaos_system import FractalChaosSystem
+
 
 # -------------------------------------------------------------------
 # Fixtures
@@ -183,6 +190,12 @@ ALL_SYSTEMS = [
     VolatilityWeightedTrendSystem(),
     NoiseFilteredTrendSystem(),
     PriceVolumeDistributionSystem(),
+    # Phase 7
+    GeneticAlgorithmSystem(),
+    NeuralNetworkPredictor(),
+    FuzzyLogicSystem(),
+    ExpertSystem(),
+    FractalChaosSystem(),
 ]
 
 
